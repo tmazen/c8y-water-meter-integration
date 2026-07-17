@@ -7,6 +7,7 @@
 # 2. ALLOW GITIGNORE ITSELF
 # ==========================================
 !.gitignore
+!weptech/
 
 # ==========================================
 # 3. ALLOW SPECIFIC FOLDERS / FILES
