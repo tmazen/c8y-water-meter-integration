@@ -12,6 +12,7 @@
 # ==========================================
 # 3. ALLOW SPECIFIC FOLDERS / FILES
 # ==========================================
+!weptech/LWM2M-XML-Files/SWAN2&3-LwM2M-XML-Objectdescription-V1.7.zip
 !weptech/c8y_oms_parser_service/
 !weptech/c8y_oms_parser_service/**
 !weptech/oms-decoder-c8y-oms-parser/
