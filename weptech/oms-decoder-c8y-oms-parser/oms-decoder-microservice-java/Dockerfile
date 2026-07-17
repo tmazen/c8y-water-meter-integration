@@ -7,7 +7,7 @@ RUN apk add --no-cache coreutils openjdk21
 COPY target/docker-work/etc/ /etc/oms-decoder-c8y-parser/
 
 # Copy your freshly built Spring Boot application jar
-COPY target/oms-decoder-c8y-parser-1.0.12-SNAPSHOT.jar /app.jar
+COPY target/oms-decoder-c8y-parser-1.0.14-SNAPSHOT.jar /app.jar
 
 EXPOSE 80
 ENTRYPOINT ["java", "-jar", "/app.jar"]

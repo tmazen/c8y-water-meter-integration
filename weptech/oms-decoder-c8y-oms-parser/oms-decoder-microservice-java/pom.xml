@@ -4,7 +4,7 @@
   <groupId>c8y.utilitydemo.oms</groupId>
   <artifactId>oms-decoder-c8y-parser</artifactId>
   <packaging>jar</packaging>
-  <version>1.0.12-SNAPSHOT</version>
+  <version>1.0.14-SNAPSHOT</version>
   <name>oms-decoder-ms-java</name>
   <url>http://maven.apache.org</url>
   <properties>

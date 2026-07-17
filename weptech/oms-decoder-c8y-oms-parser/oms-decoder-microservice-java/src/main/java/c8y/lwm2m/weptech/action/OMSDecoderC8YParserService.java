@@ -68,7 +68,7 @@ public class OMSDecoderC8YParserService implements DecoderService{
     private final ObjectMapper objectMapper;
 
     // Use the explicit internal reverse-proxy path target registered via your cumulocity.json manifest
-    private static final String PARSER_INTERNAL_PATH = "c8y-oms-parser/api/v1/parse";
+    private static final String PARSER_INTERNAL_PATH = "/service/c8y-oms-parser/api/v1/parse";
 
     @Autowired
     public OMSDecoderC8YParserService(RestConnector restConnector,
@@ -176,7 +176,8 @@ public class OMSDecoderC8YParserService implements DecoderService{
             // 2. Build the request forwarding the token to the local sidecar proxy
             HttpRequest request = HttpRequest.newBuilder()
                     //.uri(URI.create("http://localhost/service/c8y-oms-parser/api/v1/decode"))
-                    .uri(URI.create(baseUrl + "/service/c8y-oms-parser/api/v1/decode"))
+                    //.uri(URI.create(baseUrl + "/service/c8y-oms-parser/api/v1/decode"))
+                    .uri(URI.create(baseUrl + PARSER_INTERNAL_PATH))
                     //.uri(URI.create("http://c8y-oms-parser/api/v1/decode"))
                     .header("Content-Type", "application/json")
                     .header("Accept", "application/json")
@@ -268,7 +269,7 @@ public class OMSDecoderC8YParserService implements DecoderService{
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(jsonString);
-            JsonNode drArray = root.at("/DecodedMeasurements");
+            JsonNode drArray = root.at("/ParsedMeasurements");
 
             MeasurementRepresentation volumeMeasurement = new MeasurementRepresentation();
             MeasurementRepresentation volumeFlowMeasurement = new MeasurementRepresentation();
