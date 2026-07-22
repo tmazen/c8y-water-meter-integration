@@ -47,9 +47,9 @@ This microservice processes wM-Bus / OMS telemetry sent via LwM2M from the **WEP
 
 ## LwM2M Custom Decoder Implementation
 
-The core entrypoint implements Cumulocity's \`DecoderService\`:
+The core entrypoint implements Cumulocity's `DecoderService`:
 
-\`\`\`java
+```java
 package com.cumulocity.microservice.customdecoders.api.service;
 
 import com.cumulocity.microservice.customdecoders.api.model.DecoderResult;
@@ -81,7 +81,7 @@ public class OmsLwm2mDecoderService implements DecoderService {
         return result;
     }
 }
-\`\`\`
+```
 
 ---
 
