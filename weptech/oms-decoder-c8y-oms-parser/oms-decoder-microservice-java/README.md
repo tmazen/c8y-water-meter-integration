@@ -37,7 +37,7 @@ This microservice processes wM-Bus / OMS telemetry sent via LwM2M from the **WEP
 
 ## Features
 
-- **Standard Cumulocity LwM2M Custom Decoder:** Fully implements the official `com.cumulocity.microservice.customdecoders.api` contract.
+- **Standard Cumulocity LwM2M Custom Decoder:** Fully compliant with the `com.cumulocity.microservice.customdecoders.api` framework.
 - **WEPTECH SAWAN3 Gateway Support:** Tailored to parse OMS / wM-Bus payload wrappers transported over LwM2M objects/resources.
 - **Microservice-to-Microservice Sidecar Proxy:** Calls `c8y-oms-parser` via Cumulocity internal routing.
 - **Exact Register Identification:** Uses `HeaderRaw` byte strings to isolate Forward Flow, Backward Flow, Flow Rates, Temperatures, and Battery Diagnostics.
