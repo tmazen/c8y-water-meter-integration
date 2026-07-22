@@ -122,7 +122,7 @@ This microservice is modular and can be extended to support new OMS/M-Bus meters
 ### Step 1: Add New VIF/VIFE Extension Codes
 In `src/parser/vif.rs` (or your VIF decoder module), add match arms inside `decode_vif` to register new fields:
 
-```
+```rust
 pub fn decode_vif(vif: u8, vife_chain: &[u8]) -> VifInfo {
     match vif {
         // Example: Adding Energy / Heat (kWh) support
