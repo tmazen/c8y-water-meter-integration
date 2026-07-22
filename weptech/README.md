@@ -50,13 +50,13 @@ A Cumulocity microservice implementing the **`com.cumulocity.microservice.custom
                                                                   v
 +-----------------------+   HTTP POST /api/v1/parse   +-----------------------------+
 | c8y_oms_parser_service| <-------------------------- | oms-decoder-microservice    |
-| (Rust Sidecar)        | --------------------------> | (Java LwM2M Custom Decoder) |
+| (Rust Sidecar)        | --------------------------> |  ( LwM2M Custom Decoder)    |
 +-----------------------+     Parsed JSON Payload     +-----------------------------+
                                                                   |
                                                                   | Returns DecoderResult
                                                                   v
                                                       +-----------------------------+
-                                                      | Cumulocity Telemetry Store  |
+                                                      | Cumulocity LwM2M Agent      |
                                                       +-----------------------------+
 ```
 
