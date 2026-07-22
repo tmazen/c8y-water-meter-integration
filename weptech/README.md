@@ -41,7 +41,7 @@ A Cumulocity microservice implementing the **`com.cumulocity.microservice.custom
 
 ## End-to-End Data Pipeline
 
-{b3}text
+```text
 +-----------------------+     LwM2M Telemetry      +-----------------------------+
 | WEPTECH SAWAN3 GW     | -----------------------> | Cumulocity LwM2M Agent      |
 | (wM-Bus Meters)       |                          +-----------------------------+
@@ -58,6 +58,6 @@ A Cumulocity microservice implementing the **`com.cumulocity.microservice.custom
                                                       +-----------------------------+
                                                       | Cumulocity Telemetry Store  |
                                                       +-----------------------------+
-{b3}
+```
 
 ---
