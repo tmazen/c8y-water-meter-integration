@@ -96,7 +96,6 @@ public class OmsLwm2mDecoderService implements DecoderService {
 | \`0238\` | Volume Flow Rate / Power | \`c8y_WaterMeasurement.FlowRate\` | m³/h |
 | \`0258\` | Flow Temperature | \`c8y_TemperatureMeasurement.FlowTemp\` | °C |
 | \`01FD74\` | Remaining Battery Life | \`c8y_Battery.RemainingLife\` | day(s) |
-| \`01FD17\` | Error Flags | \`c8y_Status.ErrorFlags\` | Bitmask |
 
 ---
 
