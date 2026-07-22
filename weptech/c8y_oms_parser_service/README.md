@@ -6,7 +6,7 @@ A high-performance Rust-based microservice designed for Cumulocity. This service
 
 ## Architecture & Integration Flow
 
-+--------------------------+       HTTP POST /decode        +-------------------------+
++--------------------------+       HTTP POST /parse         +-------------------------+
 |  Cumulocity MicroService | -----------------------------> |  c8y-oms-parser (Rust)  |
 |                          | <----------------------------- |  (Port 80)              |
 +--------------------------+    Decoded JSON Payload        +-------------------------+
@@ -43,75 +43,75 @@ Cumulocity uses this endpoint for liveness and readiness probes.
 
 ### Payload Decoding Endpoint
 
-* **URL:** \`POST /decode\`
-* **Headers:** \`Content-Type: application/json\`
+* **URL:** `POST /parse`
+* **Headers:** `Content-Type: application/json`
 
 #### Example Request:
-\`\`\`json
+```json
 {
   \"payload\": \"2E44933B00000000046D33130701041300000000\"
 }
-\`\`\`
+```
 
 #### Example Response:
-\`\`\`json
+```json
 {
-  \"ProgState\": \"Success\",
-  \"DLL\": {
-    \"DeviceType\": \"WaterMeter\",
-    \"IdentificationNo\": \"09724574\",
-    \"Manufacturer\": \"AXI\"
+  "ProgState": "Success",
+  "DLL": {
+    "DeviceType": "WaterMeter",
+    "IdentificationNo": "09724574",
+    "Manufacturer": "AXI"
   },
-  \"DecodedMeasurements\": [
+  "ParsedMeasurements": [
     {
-      \"RecordIndex\": 0,
-      \"HeaderRaw\": \"046D\",
-      \"DIF\": \"0x04\",
-      \"VIF\": \"0x6D\",
-      \"Name\": \"Date and Time\",
-      \"Quantity\": \"Time\",
-      \"Unit\": \"ISO8601\",
-      \"Value\": \"2026-07-01T13:33:00\"
+      "RecordIndex": 0,
+      "HeaderRaw": "046D",
+      "DIF": "0x04",
+      "VIF": "0x6D",
+      "Name": "Date and Time",
+      "Quantity": "Time",
+      "Unit": "ISO8601",
+      "Value": "2026-07-01T13:33:00"
     },
     {
-      \"RecordIndex\": 1,
-      \"HeaderRaw\": \"0413\",
-      \"DIF\": \"0x04\",
-      \"VIF\": \"0x13\",
-      "Name\": \"Volume\",
-      \"Quantity\": \"Volume\",
-      \"Unit\": \"m³\",
-      \"Value\": 0.0
+      "RecordIndex": 1,
+      "HeaderRaw": "0413",
+      "DIF": "0x04",
+      "VIF": "0x13",
+      "Name": "Volume",
+      "Quantity": "Volume",
+      "Unit": "m³",
+      "Value": 0.0
     },
     {
-      \"RecordIndex\": 2,
-      \"HeaderRaw\": \"04933B\",
-      \"DIF\": \"0x04\",
-      \"VIF\": \"0x93\",
-      \"Name\": \"Volume Accumulation (Forward Flow)\",
-      \"Quantity\": \"Volume\",
-      \"Unit\": \"m³\",
-      \"Value\": 12.45
+      "RecordIndex": 2,
+      "HeaderRaw": "04933B",
+      "DIF": "0x04",
+      "VIF": "0x93",
+      "Name": "Volume Accumulation (Forward Flow)",
+      "Quantity": "Volume",
+      "Unit": "m³",
+      "Value": 12.45
     }
   ]
 }
-\`\`\`
+```
 
 ---
 
 ## HeaderRaw Reference Map
 
-When mapping outputs in your downstream Java application, match against \`HeaderRaw\`:
+When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 
 | HeaderRaw | Description |
 |---|---|
-| \`046D\` | Date and Time string (ISO8601) |
-| \`0413\` | Standard Volume (m³) |
-| \`04933B\` | Forward Flow Volume Accumulation (m³) |
-| \`04933C\` | Backward Flow Volume Accumulation (m³) |
-| \`023B\` | Volume Flow Rate (m³/h) |
-| \`0259\` | Flow Temperature (°C) |
-| \`01FD74\` | Remaining Battery Life (Days) |
+| `046D` | Date and Time string (ISO8601) |
+| `0413` | Standard Volume (m³) |
+| `04933B` | Forward Flow Volume Accumulation (m³) |
+| `04933C` | Backward Flow Volume Accumulation (m³) |
+| `023B` | Volume Flow Rate (m³/h) |
+| `0259` | Flow Temperature (°C) |
+| `01FD74` | Remaining Battery Life (Days) |
 
 ---
 
