@@ -1,7 +1,8 @@
 # c8y-oms-parser Microservice
 
-A high-performance Rust-based microservice designed for Cumulocity. This service receives raw wireless M-Bus (wM-Bus) and OMS (Open Metering System) hex payloads from upstream microservices or external webhooks, decodes the DIF/VIF records, and returns structured data fields.
+A high-performance Rust-based microservice designed for Cumulocity. This service receives Base64-encoded wireless M-Bus (wM-Bus) and OMS (Open Metering System) frames from upstream services, parses DIF/DIFE/VIF/VIFE headers using a data-driven lookup table, and returns structured measurement JSON.
 
+> **Important Note:** This microservice handles **unencrypted payloads only**. Any encrypted wM-Bus frames (such as OMS Mode 5 security profiles) must be decrypted upstream or decrypted prior to being passed into the `/api/v1/parse` endpoint.
 ---
 
 ## Architecture & Integration Flow
