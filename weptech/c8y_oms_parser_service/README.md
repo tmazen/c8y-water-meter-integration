@@ -148,35 +148,35 @@ pub fn decode_vif(vif: u8, vife_chain: &[u8]) -> VifInfo {
 }
 ```
 
-### Step 2: Handle Multi-Byte Header Extensions (\`HeaderRaw\`)
-To ensure downstream Java consumers can target new fields explicitly:
+### Step 2: Handle Multi-Byte Header Extensions (`HeaderRaw`)
+To ensure downstream Microservice consumers can target new fields explicitly:
 1. Ensure the byte-slicing logic in your reader collects all bytes in the DIF/DIFE and VIF/VIFE chain.
-2. Format the byte array as an uppercase hexadecimal string assigned to \`HeaderRaw\`:
+2. Format the byte array as an uppercase hexadecimal string assigned to `HeaderRaw`:
 
-\`\`\`rust
-let header_raw = format_bytes_to_hex(&header_bytes); // e.g., [0x04, 0x93, 0x3B] -> \"04933B\"
-\`\`\`
+```rust
+let header_raw = format_bytes_to_hex(&header_bytes); // e.g., [0x04, 0x93, 0x3B] -> "04933B"
+```
 
 ### Step 3: Support Custom Device Link Layers (DLL)
-If adding new physical meter types (e.g., Gas or Electricity), update \`decode_dll\` to map the M-Bus Device Type byte (CI Field / Header):
+If adding new physical meter types (e.g., Gas or Electricity), update `decode_dll` to map the M-Bus Device Type byte (CI Field / Header):
 
 | CI / Device Type Byte | Device Category |
 |---|---|
-| \`0x02\` | Electricity Meter |
-| \`0x03\` | Gas Meter |
-| \`0x04\` | Heat Meter |
-| \`0x07\` | Water Meter |
+| `0x02` | Electricity Meter |
+| `0x03` | Gas Meter |
+| `0x04` | Heat Meter |
+| `0x07` | Water Meter |
 
 ---
 
 ## Building and Packaging
 
-Cumulocity microservices require a **Linux x86_64 Docker container** packaged inside a \`.zip\` archive alongside a \`cumulocity.json\` manifest.
+Cumulocity microservices require a **Linux x86_64 Docker container** packaged inside a `.zip` archive alongside a `cumulocity.json` manifest.
 
 ### Prerequisites
 - [Rust & Cargo](https://www.rust-lang.org/)
 - [Docker](https://www.docker.com/)
-- \`zip\` utility
+- `zip` utility
 
 ---
 
@@ -185,29 +185,40 @@ Ensure a \`cumulocity.json\` manifest file exists in your project root:
 
 \`\`\`json
 {
-  \"apiVersion\": \"2\",
-  \"version\": \"1.0.0\",
-  \"name\": \"c8y-oms-parser\",
-  \"contextPath\": \"c8y-oms-parser\",
-  \"isolation\": \"MULTI_TENANT\",
-  \"requiredRoles\": [],
-  \"roles\": [],
-  \"livenessProbe\": {
-    \"httpGet\": {
-      \"path\": \"/health\",
-      \"port\": 80
-    },
-    \"initialDelaySeconds\": 10,
-    "periodSeconds\": 10
+  "apiVersion": "2",
+  "version": "1.0.3",
+  "provider": {
+    "name": "Cumulocity"
   },
-  \"readinessProbe\": {
-    \"httpGet\": {
-      \"path\": \"/health\",
-      \"port\": 80
+  "isolation": "PER_TENANT",
+  "replicas": 1,
+  "contextPath": "c8y-oms-parser",
+  "resources": {
+    "memory": "512Mi",
+    "cpu": "0.5"
+  },
+  "livenessProbe": {
+    "httpGet": {
+      "path": "/health",
+      "port": 80
     },
-    \"initialDelaySeconds\": 5,
-    \"periodSeconds\": 5
-  }
+    "initialDelaySeconds": 30,
+    "periodSeconds": 10,
+    "failureThreshold": 3
+  },
+  "readinessProbe": {
+    "httpGet": {
+      "path": "/health",
+      "port": 80
+    },
+    "initialDelaySeconds": 20,
+    "periodSeconds": 10,
+    "failureThreshold": 3
+  },
+  "requiredRoles": [
+    "ROLE_INVENTORY_READ"
+  ],
+  "roles": []
 }
 \`\`\`
 
@@ -216,17 +227,17 @@ Ensure a \`cumulocity.json\` manifest file exists in your project root:
 ### Step 2: Build Local Docker Image
 Build the container using multi-stage builds for small binary footprints:
 
-\`\`\`bash
+```bash
 docker build --platform linux/amd64 -t c8y-oms-parser:latest .
-\`\`\`
+```
 
 ---
 
-### Step 3: Package for Cumulocity IoT
+### Step 3: Package for Cumulocity
 
-Cumulocity expects the Docker image saved as \`image.tar\` zipped together with \`cumulocity.json\`:
+Cumulocity expects the Docker image saved as `image.tar` zipped together with `cumulocity.json`:
 
-\`\`\`bash
+```bash
 # 1. Export the Docker image as a tarball
 docker save c8y-oms-parser:latest -o image.tar
 
@@ -235,13 +246,13 @@ zip c8y-oms-parser.zip image.tar cumulocity.json
 
 # 3. Clean up the intermediary tar archive
 rm image.tar
-\`\`\`
+```
 
 ---
 
 ## Deployment to Cumulocity
 
-1. Log into your **Cumulocity IoT Tenant**.
+1. Log into your **Cumulocity Tenant**.
 2. Go to **Administration** -> **Ecosystem** -> **Microservices**.
 3. Click **Add Microservice** and upload \`c8y-oms-parser.zip\`.
 4. Verify that the health status turns **Green / UP**.
