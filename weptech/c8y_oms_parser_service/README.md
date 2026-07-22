@@ -49,7 +49,7 @@ Cumulocity uses this endpoint for liveness and readiness probes.
 #### Example Request:
 ```json
 {
-  \"payload\": \"2E44933B00000000046D33130701041300000000\"
+  "payload": "2E44933B00000000046D33130701041300000000"
 }
 ```
 
