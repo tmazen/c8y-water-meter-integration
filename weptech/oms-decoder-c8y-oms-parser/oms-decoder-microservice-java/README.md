@@ -1,8 +1,8 @@
-# OMS Decoder Java Microservice (\`oms-decoder-microservice-java\`)
+# OMS Decoder Java Microservice (`oms-decoder-microservice-java`)
 
-An enterprise Cumulocity IoT Java microservice implementing the **LwM2M Custom Decoder interface** (\`com.cumulocity.microservice.customdecoders.api.service.DecoderService\`) as demonstrated in Cumulocity's [\`sample-lwm2m-custom-decoder\`](https://github.com/Cumulocity-IoT/cumulocity-examples/tree/develop/sample-lwm2m-custom-decoder) example.
+A Cumulocity Java microservice implementing the **LwM2M Custom Decoder interface** (`com.cumulocity.microservice.customdecoders.api.service.DecoderService`) as demonstrated in Cumulocity's [`sample-lwm2m-custom-decoder`](https://github.com/Cumulocity-IoT/cumulocity-examples/tree/develop/sample-lwm2m-custom-decoder) example.
 
-This microservice processes wM-Bus / OMS telemetry sent via LwM2M from the **WEPTECH SAWAN3 Gateway**. It intercepts LwM2M hex payloads, proxies them to the Rust sidecar (\`c8y-oms-parser\`) for DIF/VIF parsing, maps telemetry using exact \`HeaderRaw\` identifiers, and returns a structured \`DecoderResult\` directly to the Cumulocity LwM2M Agent.
+This microservice processes wM-Bus / OMS telemetry sent via LwM2M from the **WEPTECH SAWAN3 Gateway**. It intercepts LwM2M hex payloads, proxies them to the Rust sidecar (`c8y-oms-parser`) for DIF/VIF parsing, maps telemetry using exact `HeaderRaw` identifiers, and returns a structured `DecoderResult` directly to the Cumulocity LwM2M Agent.
 
 ---
 
