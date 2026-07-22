@@ -7,6 +7,7 @@ This umbrella repository contains the complete ecosystem required to integrate *
 ## Repository Structure
 
 ```text
+{b3}text
 .
 ├── LWM2M-XML-Files/
 │   └── (LwM2M Object XML definitions for WEPTECH SAWAN3 Gateway)
@@ -15,4 +16,5 @@ This umbrella repository contains the complete ecosystem required to integrate *
 └── oms-decoder-c8y-oms-parser/
     └── oms-decoder-microservice-java/
         └── (Java Spring Boot microservice implementing Lwm2mDecoderService)
+{b3}
 ```
