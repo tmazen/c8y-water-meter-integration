@@ -120,24 +120,24 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 This microservice is modular and can be extended to support new OMS/M-Bus meters (e.g., Gas, Heat, Electricity, or custom Water meter frames) without breaking existing parser contracts.
 
 ### Step 1: Add New VIF/VIFE Extension Codes
-In \`src/parser/vif.rs\` (or your VIF decoder module), add match arms inside \`decode_vif\` to register new fields:
+In `src/parser/vif.rs` (or your VIF decoder module), add match arms inside `decode_vif` to register new fields:
 
-\`\`\`rust
+```
 pub fn decode_vif(vif: u8, vife_chain: &[u8]) -> VifInfo {
     match vif {
         // Example: Adding Energy / Heat (kWh) support
         0x00..=0x07 => VifInfo {
-            name: \"Energy\",
-            unit: \"Wh\",
-            quantity: \"Energy\",
+            name: "Energy",
+            unit: "Wh",
+            quantity: "Energy",
             multiplier: 10.0f64.powi((vif & 0x07) as i32 - 3),
         },
         // Example: Extension table check (0xFD)
         0xFD => match vife_chain.get(0) {
             Some(0x17) => VifInfo {
-                name: \"Error Flags\",
-                unit: \"Bitmask\",
-                quantity: \"StatusAndDiagnostics\",
+                name: "Error Flags",
+                unit: "Bitmask",
+                quantity: "StatusAndDiagnostics",
                 multiplier: 1.0,
             },
             // Add custom manufacturer or OMS extensions here
@@ -146,7 +146,7 @@ pub fn decode_vif(vif: u8, vife_chain: &[u8]) -> VifInfo {
         _ => VifInfo::unknown(),
     }
 }
-\`\`\`
+```
 
 ### Step 2: Handle Multi-Byte Header Extensions (\`HeaderRaw\`)
 To ensure downstream Java consumers can target new fields explicitly:
