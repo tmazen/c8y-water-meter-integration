@@ -117,6 +117,39 @@ docker build --platform linux/amd64 -t oms-decoder-microservice-java:latest .
 
 Ensure `cumulocity.json` contains required roles:
 
+```json
+{
+  "apiVersion": "2",
+  "version": "@project.version@",
+  "provider": {
+    "name": "Cumulocity"
+  },
+  "isolation": "MULTI_TENANT",
+  "replicas": 2,
+  "livenessProbe": {
+    "httpGet": {
+      "path": "/health"
+    },
+    "initialDelaySeconds": 60
+  },
+  "readinessProbe": {
+    "httpGet": {
+      "path": "/health"
+    },
+    "initialDelaySeconds": 60
+  },
+  "requiredRoles": [
+    "ROLE_INVENTORY_READ",
+    "ROLE_IDENTITY_READ",
+    "ROLE_MEASUREMENT_ADMIN",
+    "ROLE_EVENT_ADMIN"
+  ],
+  "isDecoder": {
+    "name":"Cumulocity OMS Parser"
+  }
+}
+```
+
 Export and zip the package:
 
 ```bash
