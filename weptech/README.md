@@ -6,7 +6,7 @@ This umbrella repository contains the complete ecosystem required to integrate *
 
 ## Repository Structure
 
-```text
+
 {b3}text
 .
 ├── LWM2M-XML-Files/
@@ -17,4 +17,4 @@ This umbrella repository contains the complete ecosystem required to integrate *
     └── oms-decoder-microservice-java/
         └── (Java Spring Boot microservice implementing Lwm2mDecoderService)
 {b3}
-```
+
