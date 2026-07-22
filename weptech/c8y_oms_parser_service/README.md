@@ -117,57 +117,59 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 
 ## Extending for Other OMS Payloads
 
-This microservice is modular and can be extended to support new OMS/M-Bus meters (e.g., Gas, Heat, Electricity, or custom Water meter frames) without breaking existing parser contracts.
+Your application uses a **Data-Driven Meta Quantity Layout** backed by `VIF_LOOKUP_TABLE` and the `parse_vif()` function in `main.rs`.
 
-### Step 1: Add New VIF/VIFE Extension Codes
-In `src/parser/vif.rs` (or your VIF decoder module), add match arms inside `decode_vif` to register new fields:
+### Step 1: Adding Standard VIF Rules (`VIF_LOOKUP_TABLE`)
+To add support for a new unit or metric family (e.g., Reactive Power, Voltage, Current, or Gas), add a new `VifRule` struct to `VIF_LOOKUP_TABLE`:
 
 ```rust
-pub fn decode_vif(vif: u8, vife_chain: &[u8]) -> VifInfo {
-    match vif {
-        // Example: Adding Energy / Heat (kWh) support
-        0x00..=0x07 => VifInfo {
-            name: "Energy",
-            unit: "Wh",
-            quantity: "Energy",
-            multiplier: 10.0f64.powi((vif & 0x07) as i32 - 3),
-        },
-        // Example: Extension table check (0xFD)
-        0xFD => match vife_chain.get(0) {
-            Some(0x17) => VifInfo {
-                name: "Error Flags",
-                unit: "Bitmask",
-                quantity: "StatusAndDiagnostics",
-                multiplier: 1.0,
-            },
-            // Add custom manufacturer or OMS extensions here
-            _ => VifInfo::unknown(),
-        },
-        _ => VifInfo::unknown(),
+const VIF_LOOKUP_TABLE: &[VifRule] = &[
+    // ... existing rules ...
+
+    // Example: Adding Voltage support (VIF range 0x48 - 0x4F)
+    VifRule { 
+        vif_mask: 0xF8, 
+        vif_match: 0x48, 
+        name: "Voltage", 
+        unit: "V", 
+        exponent_mapping: [-9, -8, -7, -6, -5, -4, -3, -2], 
+        data_type: DataType::UnsignedInteger, 
+        quantity: Quantity::Unknown 
+    },
+];
+```
+
+### Step 2: Adding VIFE / Extension Exceptions (`parse_vif`)
+For multi-byte VIF extended codes (such as `0xFD` status bytes or specific sub-VIF definitions like forward/backward flow), update `parse_vif()`:
+
+```rust
+fn parse_vif(vif: u8, extended_vif_type: bool, current_vif: u8) -> MeasurementDescriptor {
+    if extended_vif_type {
+        // Example: Extended status table check
+        if vif == 0xFD && current_vif == 0x17 {
+            return MeasurementDescriptor { 
+                name: "Error flags (binary)", 
+                unit: "Bitmask", 
+                exponent: 0, 
+                data_type: DataType::UnsignedInteger, 
+                quantity: Quantity::StatusAndDiagnostics 
+            };
+        }
+        return MeasurementDescriptor { name: "Manufacturer Extension", unit: "None", exponent: 0, data_type: DataType::Unknown, quantity: Quantity::Unknown };
     }
+
+    let vif_clean = vif & 0x7F;
+
+    // Example: Handling specific sub-VIF byte combinations
+    if vif_clean == 0x13 {
+        if current_vif == 0x3B {
+            return MeasurementDescriptor { name: "Volume Accumulation (Forward Flow)", unit: "m³", exponent: -3, data_type: DataType::UnsignedInteger, quantity: Quantity::Volume };
+        }
+    }
+
+    // Falls back to VIF_LOOKUP_TABLE iteration...
 }
 ```
-
-### Step 2: Handle Multi-Byte Header Extensions (`HeaderRaw`)
-To ensure downstream Microservice consumers can target new fields explicitly:
-1. Ensure the byte-slicing logic in your reader collects all bytes in the DIF/DIFE and VIF/VIFE chain.
-2. Format the byte array as an uppercase hexadecimal string assigned to `HeaderRaw`:
-
-```rust
-let header_raw = format_bytes_to_hex(&header_bytes); // e.g., [0x04, 0x93, 0x3B] -> "04933B"
-```
-
-### Step 3: Support Custom Device Link Layers (DLL)
-If adding new physical meter types (e.g., Gas or Electricity), update `decode_dll` to map the M-Bus Device Type byte (CI Field / Header):
-
-| CI / Device Type Byte | Device Category |
-|---|---|
-| `0x02` | Electricity Meter |
-| `0x03` | Gas Meter |
-| `0x04` | Heat Meter |
-| `0x07` | Water Meter |
-
----
 
 ## Building and Packaging
 
