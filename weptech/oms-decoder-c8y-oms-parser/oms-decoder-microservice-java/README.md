@@ -100,42 +100,26 @@ public class OmsLwm2mDecoderService implements DecoderService {
 ## Building and Packaging
 
 ### Step 1: Maven Build
-\`\`\`bash
+```bash
 mvn clean package -DskipTests
-\`\`\`
+```
 
 ---
 
 ### Step 2: Build Docker Image
-\`\`\`bash
+```bash
 docker build --platform linux/amd64 -t oms-decoder-microservice-java:latest .
-\`\`\`
+```
 
 ---
 
 ### Step 3: Package Microservice for Cumulocity
 
-Ensure \`cumulocity.json\` contains required roles:
-
-\`\`\`json
-{
-  \"apiVersion\": \"2\",
-  \"version\": \"1.0.0\",
-  \"name\": \"oms-decoder-microservice-java\",
-  \"contextPath\": \"oms-decoder-microservice-java\",
-  \"isolation\": \"MULTI_TENANT\",
-  \"requiredRoles\": [
-    \"ROLE_INVENTORY_READ\",
-    \"ROLE_INVENTORY_ADMIN\",
-    \"ROLE_MEASUREMENT_ADMIN\"
-  ],
-  \"roles\": []
-}
-\`\`\`
+Ensure `cumulocity.json` contains required roles:
 
 Export and zip the package:
 
-\`\`\`bash
+```bash
 # 1. Export docker image tarball
 docker save oms-decoder-microservice-java:latest -o image.tar
 
@@ -144,13 +128,13 @@ zip oms-decoder-microservice-java.zip image.tar cumulocity.json
 
 # 3. Clean up tarball
 rm image.tar
-\`\`\`
+```
 
 ---
 
 ## Deployment & Device Protocol Registration
 
-1. Upload **\`c8y-oms-parser.zip\`** and **\`oms-decoder-microservice-java.zip\`** to Cumulocity (**Administration -> Microservices**).
+1. Upload **`oms-decoder-microservice-java.zip`** to Cumulocity (**Administration -> Microservices**).
 2. Go to **Device Management -> Device Types -> Device Protocols -> LwM2M**.
 3. Create/Edit the LwM2M protocol for the **WEPTECH SAWAN3 Gateway**.
-4. In the resource mapping action configuration, select **Custom Decoder Microservice** and choose \`oms-decoder-microservice-java\`.
+4. In the resource mapping action configuration, select **Custom Decoder Microservice** and choose `Cumulocity OMS Parser`.
