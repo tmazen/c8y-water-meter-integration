@@ -185,7 +185,7 @@ Cumulocity microservices require a **Linux x86_64 Docker container** packaged in
 ### Step 1: Create the \`cumulocity.json\` Manifest
 Ensure a \`cumulocity.json\` manifest file exists in your project root:
 
-\`\`\`json
+\\\json 
 {
   "apiVersion": "2",
   "version": "1.0.3",
@@ -222,7 +222,7 @@ Ensure a \`cumulocity.json\` manifest file exists in your project root:
   ],
   "roles": []
 }
-\`\`\`
+\\\
 
 ---
 
