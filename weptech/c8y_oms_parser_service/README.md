@@ -6,10 +6,12 @@ A high-performance Rust-based microservice designed for Cumulocity. This service
 
 ## Architecture & Integration Flow
 
-+--------------------------+       HTTP POST /parse         +-------------------------+
+```
++--------------------------+    HTTP POST /api/v1/parse    +-------------------------+
 |  Cumulocity MicroService | -----------------------------> |  c8y-oms-parser (Rust)  |
 |                          | <----------------------------- |  (Port 80)              |
-+--------------------------+    Decoded JSON Payload        +-------------------------+
++--------------------------+      Decoded JSON Payload      +-------------------------+
+```
 
 1. The ** Microservice** sends a raw hexadecimal telemetry frame to the Rust microservice via Cumulocity's internal proxy (`http://cumulocity:8111/service/c8y-oms-parser/decode`).
 2. The **Rust Microservice** parses the data frame and extracts individual measurement registers along with `HeaderRaw` (DIF+VIF+VIFE bytes), `RecordIndex`, values, and units.
