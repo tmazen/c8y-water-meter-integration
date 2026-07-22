@@ -7,7 +7,7 @@ A high-performance Rust-based microservice designed for Cumulocity. This service
 ## Architecture & Integration Flow
 
 ```
-+--------------------------+    HTTP POST /api/v1/parse    +-------------------------+
++--------------------------+    HTTP POST /api/v1/parse     +-------------------------+
 |  Cumulocity MicroService | -----------------------------> |  c8y-oms-parser (Rust)  |
 |                          | <----------------------------- |  (Port 80)              |
 +--------------------------+      Decoded JSON Payload      +-------------------------+
