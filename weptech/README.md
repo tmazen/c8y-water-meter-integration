@@ -72,4 +72,3 @@ A Cumulocity microservice implementing the **`com.cumulocity.microservice.custom
    Build `oms-decoder-microservice-java` into a microservice ZIP and deploy it to Cumulocity.
 4. **Register Device Protocol:**
    In Cumulocity, create a **LwM2M Device Protocol** for SAWAN3, link the target LwM2M resource, and select `Cumulocity OMS Parser` as the **Custom Decoder Microservice**.
-"""
