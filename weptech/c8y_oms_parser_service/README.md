@@ -33,11 +33,11 @@ Cumulocity uses this endpoint for liveness and readiness probes.
 * **URL:** \`GET /health\`
 * **Response:** \`200 OK\`
 
-\`\`\`json
+```json
 {
-  \"status\": \"UP\"
+  "status": "UP"
 }
-\`\`\`
+```
 
 ---
 
