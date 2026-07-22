@@ -8,30 +8,30 @@ This microservice processes wM-Bus / OMS telemetry sent via LwM2M from the **WEP
 
 ## Architecture & Integration Flow
 
-\`\`\`
+```
 +-----------------------+     LwM2M / OMS      +-----------------------------+
-| WEPTECH SAWAN3 GW     | -------------------> | Cumulocity IoT LwM2M Agent  |
+| WEPTECH SAWAN3 GW     | -------------------> |    Cumulocity LwM2M Agent   |
 | (wM-Bus Meters)       |                      +-----------------------------+
 +-----------------------+                                     |
                                                               | Invokes DecoderService.decode()
                                                               v
 +-----------------------+   HTTP POST /api/v1/parse   +-----------------------------+
-| c8y-oms-parser (Rust) | <-------------------------- | oms-decoder-microservice    |
-| (Port 80 - Axum)      | --------------------------> | (Java - Custom LwM2M Decoder)|
+| c8y-oms-parser (Rust) | <-------------------------- |   oms-decoder-microservice  |
+| (Port 80)             | --------------------------> |    (Custom LwM2M Decoder)   |
 +-----------------------+     Parsed JSON Payload     +-----------------------------+
                                                               |
                                                               | Returns DecoderResult 
                                                               | (Measurements & Events)
                                                               v
                                                       +-----------------------------+
-                                                      | Cumulocity LwM2M Platform   |
+                                                      |   Cumulocity LwM2M Agent    |
                                                       +-----------------------------+
-\`\`\`
+```
 
-1. **LwM2M Interception:** The WEPTECH SAWAN3 Gateway forwards raw unencrypted wM-Bus frames via LwM2M. Cumulocity's LwM2M engine delegates payload handling to this service by executing \`DecoderService.decode(inputData, deviceId, args)\`.
-2. **Rust Sidecar Parsing:** The Java microservice sends the raw Base64 payload to the sidecar microservice (\`c8y-oms-parser\`).
-3. **Field Extraction & Disambiguation:** The Java service processes the JSON response from Rust, using exact \`HeaderRaw\` string matching (e.g., \`04933B\` vs \`04933C\`) to differentiate metrics.
-4. **DecoderResult Assembly:** The microservice builds a \`DecoderResult\` containing \`MeasurementRepresentation\` objects stamped with meter time (\`046D\`) and returns it directly to Cumulocity.
+1. **LwM2M Interception:** The WEPTECH SAWAN3 Gateway forwards raw unencrypted wM-Bus frames via LwM2M. Cumulocity's LwM2M engine delegates payload handling to this service by executing `DecoderService.decode(inputData, deviceId, args)`.
+2. **Rust Sidecar Parsing:** The microservice sends the raw Base64 payload to the sidecar microservice (`c8y-oms-parser`).
+3. **Field Extraction & Disambiguation:** The microservice processes the JSON response from Rust, using exact `HeaderRaw` string matching (e.g., `04933B` vs `04933C`) to differentiate metrics.
+4. **DecoderResult Assembly:** The microservice builds a `DecoderResult` containing `MeasurementRepresentation` objects stamped with meter time and returns it directly to Cumulocity.
 
 ---
 
