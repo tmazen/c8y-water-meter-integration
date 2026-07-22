@@ -61,3 +61,15 @@ A Cumulocity microservice implementing the **`com.cumulocity.microservice.custom
 ```
 
 ---
+
+## Deployment Quickstart
+
+1. **Upload XML Specifications:**
+   Import all XML files from `LWM2M-XML-Files/` into your Cumulocity tenant under **Device Management -> Device Types -> Device Protocols**.
+2. **Build & Deploy Rust Sidecar:**
+   Build `c8y_oms_parser_service` into a microservice ZIP and deploy it to Cumulocity with the application name `c8y-oms-parser`.
+3. **Build & Deploy Java Custom Decoder:**
+   Build `oms-decoder-microservice-java` into a microservice ZIP and deploy it to Cumulocity.
+4. **Register Device Protocol:**
+   In Cumulocity, create a **LwM2M Device Protocol** for SAWAN3, link the target LwM2M resource, and select `Cumulocity OMS Parser` as the **Custom Decoder Microservice**.
+"""
