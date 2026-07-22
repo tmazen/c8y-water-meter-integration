@@ -222,7 +222,7 @@ Ensure a \`cumulocity.json\` manifest file exists in your project root:
   ],
   "roles": []
 }
-\\\
+```
 
 ---
 
