@@ -89,31 +89,11 @@ public class OmsLwm2mDecoderService implements DecoderService {
 
 | HeaderRaw | Metric Description | Measurement Fragment / Series | Unit |
 |---|---|---|---|
-| \`046D\` | Meter Date & Time | Applied as \`DateTime\` for all measurements | ISO8601 |
-| \`0413\` | Standard Volume | \`c8y_WaterMeasurement.Volume\` | m³ |
-| \`04933B\` | Volume Accumulation (Forward Flow) | \`c8y_WaterMeasurement.ForwardFlow\` | m³ |
-| \`04933C\` | Volume Accumulation (Backward Flow) | \`c8y_WaterMeasurement.BackwardFlow\` | m³ |
-| \`0238\` | Volume Flow Rate / Power | \`c8y_WaterMeasurement.FlowRate\` | m³/h |
-| \`0258\` | Flow Temperature | \`c8y_TemperatureMeasurement.FlowTemp\` | °C |
-| \`01FD74\` | Remaining Battery Life | \`c8y_Battery.RemainingLife\` | day(s) |
-
----
-
-## Configuration & Environment Variables
-
-Configure connection settings in \`src/main/resources/application.properties\`:
-
-\`\`\`properties
-# Server Configuration
-server.port=80
-
-# Rust Microservice Sidecar Endpoint
-oms.parser.url=http://c8y-oms-parser/api/v1/parse
-
-# Cumulocity Context
-c8y.bootstrap.tenant=management
-c8y.bootstrap.user=servicebootstrap
-\`\`\`
+| `046D` | Meter Date & Time | Applied as `DateTime` for all measurements | ISO8601 |
+| `0413` | Standard Volume | `Meter_Volume.V` | m³ |
+| `023B` | Volume Flow Rate / Power | `Meter_Volume_Flow.Flow` | m³/h |
+| `0259` | Flow Temperature | `Meter_Flow_Temperature.T` | °C |
+| `01FD74` | Remaining Battery Life | `Meter_Remaining_Battery.Remaining_Battery` | day(s) |
 
 ---
 
