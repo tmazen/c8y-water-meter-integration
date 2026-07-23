@@ -117,6 +117,29 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 | `01FD74` | Remaining Battery Life (Days) |
 
 ---
+"""
+## Supported DIF / DIFE / VIF / VIFE Headers
+
+The Rust decoder uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
+
+| HeaderRaw | Category / Metric | Description | Expected Unit |
+| :--- | :--- | :--- | :--- |
+| **`046D`** | Meter Timestamp | Date and time stored on the physical meter | ISO 8601 DateTime |
+| **`04933B`** | Volume | Accumulated volume measurement | $m^3$ |
+| **`023B`** | Flow Rate | Instantaneous volumetric flow rate | $m^3/h$ |
+| **`0259`** | Flow Temperature | Supply/Flow temperature | °C |
+| **`025D`** | Return Temperature | Return pipe temperature | °C |
+| **`0261`** | Temperature Difference | Differential temperature ($\Delta T$) | K / °C |
+| **`0265`** | Power | Instantaneous thermal/electrical power | kW / W |
+| **`0406`** | Energy | Total energy consumption | kWh / GJ |
+| **`01FD`** | Device Status | Error flags, tamper alerts, or battery status | Bitmask / Code |
+| **`02FD`** | Battery Life | Remaining battery operating lifetime | Days / Years |
+
+{b3}note
+Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
+
+"""
+---
 
 ## Extending for Other OMS Payloads
 
