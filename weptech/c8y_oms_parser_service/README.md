@@ -121,6 +121,7 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 
 The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
 
+### VIF Lookup Table
 | # | Metric Name | Unit | VIF Hex Range | Data Type |
 | :-: | :--- | :-: | :--- | :--- |
 | **1** | Energy | `Wh` | `0x00 - 0x07` | Unsigned Int |
@@ -139,6 +140,15 @@ The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload
 | **14** | External Temperature | `°C` | `0x64 - 0x67` | Signed Int |
 | **15** | Pressure | `bar` | `0x68 - 0x6B` | Signed Int |
 | **16** | Date and Time | `ISO8601` | `0x6D` | MbusDateTime |
+
+
+### Special VIF Overrides (parse_vif)
+| Trigger Bytes | Metric Name | Unit |
+| :--- | :--- | :-: |
+| `0xFD` + `0x74` | Remaining Battery Life | `day(s)` |
+| `0xFD` + `0x17` | Error Flags | `Bitmask` |
+| `0x13` + `0x3B` | Volume Accumulation (Forward Flow) | `m³` |
+| `0x13` + `0x3C` | Volume Accumulation (Backward Flow) | `m³` |
 
 ```note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
