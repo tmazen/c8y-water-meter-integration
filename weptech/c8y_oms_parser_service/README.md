@@ -117,7 +117,6 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 | `01FD74` | Remaining Battery Life (Days) |
 
 ---
-"""
 ## Supported DIF / DIFE / VIF / VIFE Headers
 
 The Rust decoder uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
@@ -138,7 +137,6 @@ The Rust decoder uses a data-driven lookup table to parse raw wM-Bus/OMS payload
 {b3}note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
 
-"""
 ---
 
 ## Extending for Other OMS Payloads
