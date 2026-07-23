@@ -97,6 +97,26 @@ public class OmsLwm2mDecoderService implements DecoderService {
 
 ---
 
+## Supported Water Meters
+
+The microservice decodes wireless M-Bus / OMS telemetry payloads sent by LwM2M gateways (such as the **WEPTECH SAWAN3**) for the following supported meters:
+
+| Manufacturer | Model / Series | Protocol / Mode | Key Telemetry Supported |
+| :--- | :--- | :--- | :--- |
+| **Axioma Metering** | **Qalcosonic W1 / E1** | wM-Bus / OMS (868 MHz) | Volume, Flow Rate, Flow/Return Temp, Battery, Error Flags |
+| **Generic OMS** | **OMS-compliant Meters** | EN 13757-3 / OMS Spec | Energy, Volume, Mass, Power, Pressure, Date/Time |
+
+---
+
+### Meter-Specific Payload Mapping
+
+#### Axioma Qalcosonic Series
+* **Data Registers**: Handles standard volume accumulation as well as directional flow registers (`0x13 0x3B` for Forward Flow, `0x13 0x3C` for Backward Flow).
+* **Diagnostics**: Correctly decodes extended diagnostic codes like **Remaining Battery Life** (`0xFD 0x74`) and **Device Status Bitmask** (`0xFD 0x17`).
+* **LwM2M Object Mapping**: Telemetry is mapped into standardized Cumulocity IoT measurements automatically via the Rust sidecar parser.
+
+  
+---
 ## Building and Packaging
 
 ### Step 1: Maven Build
