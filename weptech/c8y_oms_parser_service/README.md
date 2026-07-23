@@ -121,18 +121,22 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 
 The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
 
-| HeaderRaw | Category / Metric | Description | Expected Unit |
-| :--- | :--- | :--- | :--- |
-| **`046D`** | Meter Timestamp | Date and time stored on the physical meter | ISO 8601 DateTime |
-| **`04933B`** | Volume | Accumulated volume measurement | $m^3$ |
-| **`023B`** | Flow Rate | Instantaneous volumetric flow rate | $m^3/h$ |
-| **`0259`** | Flow Temperature | Supply/Flow temperature | °C |
-| **`025D`** | Return Temperature | Return pipe temperature | °C |
-| **`0261`** | Temperature Difference | Differential temperature ($\Delta T$) | K / °C |
-| **`0265`** | Power | Instantaneous thermal/electrical power | kW / W |
-| **`0406`** | Energy | Total energy consumption | kWh / GJ |
-| **`01FD`** | Device Status | Error flags, tamper alerts, or battery status | Bitmask / Code |
-| **`02FD`** | Battery Life | Remaining battery operating lifetime | Days / Years |
+| HeaderRaw / Match | Category / Metric | Description | Unit | Quantity | Data Type |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`046D`** (`0x6D`) | Date and Time | Meter timestamp | ISO8601 | Time | `MbusDateTime` |
+| **`0413`** (`0x10`) | Volume | Accumulated liquid volume | $m^3$ | Volume | `UnsignedInteger` |
+| **`023B`** (`0x38`) | Volume Flow | Instantaneous flow rate | $m^3/h$ | Volume | `UnsignedInteger` |
+| **`0258`** (`0x58`) | Flow Temperature | Supply/Flow pipe temperature | °C | Temperature | `SignedInteger` |
+| **`025C`** (`0x5C`) | Return Temperature | Return pipe temperature | °C | Temperature | `SignedInteger` |
+| **`0260`** (`0x60`) | Temperature Difference | Differential temperature ($\Delta T$) | K | Temperature | `SignedInteger` |
+| **`0264`** (`0x64`) | External Temperature | Ambient/Outdoor temperature | °C | Temperature | `SignedInteger` |
+| **`0228`** (`0x28`) | Power | Instantaneous power (Watts) | W | Power | `UnsignedInteger` |
+| **`0230`** (`0x30`) | Power | Power in Joules/hour | J/h | Power | `UnsignedInteger` |
+| **`0400`** (`0x00`) | Energy | Thermal/Electrical energy in Watt-hours | Wh | Energy | `UnsignedInteger` |
+| **`0408`** (`0x08`) | Energy | Energy in Joules | J | Energy | `UnsignedInteger` |
+| **`0268`** (`0x68`) | Pressure | System pressure | bar | Pressure | `SignedInteger` |
+| **`0x20`** | On Time | Active system duration | seconds | Time | `UnsignedInteger` |
+| **`0x24`** | Operating Time | Total operational uptime | seconds | Time | `UnsignedInteger` |
 
 ```note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
