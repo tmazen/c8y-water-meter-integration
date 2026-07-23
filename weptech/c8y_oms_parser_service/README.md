@@ -121,24 +121,24 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 
 The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
 
-| Rule # | VIF Mask | VIF Match Range | Metric Name | Quantity | Base Unit | Exponent Mapping Multipliers | Data Type |
-| :---: | :---: | :---: | :--- | :--- | :---: | :--- | :--- |
-| **1** | `0xF8` | `0x00 - 0x07` | Energy | `Quantity::Energy` | `Wh` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
-| **2** | `0xF8` | `0x08 - 0x0F` | Energy | `Quantity::Energy` | `J` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
-| **3** | `0xF8` | `0x60 - 0x67` | Energy | `Quantity::Energy` | `Cal` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
-| **4** | `0xF8` | `0x10 - 0x17` | Volume | `Quantity::Volume` | `m³` | $10^{{-6}}, 10^{{-5}}, 10^{{-4}}, 10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}$ | `UnsignedInteger` |
-| **5** | `0xF8` | `0x18 - 0x1F` | Mass | `Quantity::Mass` | `kg` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
-| **6** | `0xFC` | `0x20 - 0x23` | On Time | `Quantity::Time` | `seconds` | $10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}$ | `UnsignedInteger` |
-| **7** | `0xFC` | `0x24 - 0x27` | Operating Time | `Quantity::Time` | `seconds` | $10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}$ | `UnsignedInteger` |
-| **8** | `0xF8` | `0x28 - 0x2F` | Power | `Quantity::Power` | `W` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
-| **9** | `0xF8` | `0x30 - 0x37` | Power | `Quantity::Power` | `J/h` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
-| **10** | `0xF8` | `0x38 - 0x3F` | Volume Flow | `Quantity::Volume` | `m³/h` | $10^{{-6}}, 10^{{-5}}, 10^{{-4}}, 10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}$ | `UnsignedInteger` |
-| **11** | `0xFC` | `0x58 - 0x5B` | Flow Temperature | `Quantity::Temperature` | `°C` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
-| **12** | `0xFC` | `0x5C - 0x5F` | Return Temperature | `Quantity::Temperature` | `°C` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
-| **13** | `0xFC` | `0x60 - 0x63` | Temperature Difference | `Quantity::Temperature` | `K` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
-| **14** | `0xFC` | `0x64 - 0x67` | External Temperature | `Quantity::Temperature` | `°C` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
-| **15** | `0xFC` | `0x68 - 0x6B` | Pressure | `Quantity::Pressure` | `bar` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
-| **16** | `0xFF` | `0x6D` | Date and Time | `Quantity::Time` | `ISO8601` | $10^{{0}}$ | `MbusDateTime` |
+| # | Metric Name | Unit | VIF Hex Range | Data Type |
+| :-: | :--- | :-: | :--- | :--- |
+| **1** | Energy | `Wh` | `0x00 - 0x07` | Unsigned Int |
+| **2** | Energy | `J` | `0x08 - 0x0F` | Unsigned Int |
+| **3** | Energy | `Cal` | `0x60 - 0x67` | Unsigned Int |
+| **4** | Volume | `m³` | `0x10 - 0x17` | Unsigned Int |
+| **5** | Mass | `kg` | `0x18 - 0x1F` | Unsigned Int |
+| **6** | On Time | `seconds` | `0x20 - 0x23` | Unsigned Int |
+| **7** | Operating Time | `seconds` | `0x24 - 0x27` | Unsigned Int |
+| **8** | Power | `W` | `0x28 - 0x2F` | Unsigned Int |
+| **9** | Power | `J/h` | `0x30 - 0x37` | Unsigned Int |
+| **10** | Volume Flow | `m³/h` | `0x38 - 0x3F` | Unsigned Int |
+| **11** | Flow Temperature | `°C` | `0x58 - 0x5B` | Signed Int |
+| **12** | Return Temperature | `°C` | `0x5C - 0x5F` | Signed Int |
+| **13** | Temperature Difference | `K` | `0x60 - 0x63` | Signed Int |
+| **14** | External Temperature | `°C` | `0x64 - 0x67` | Signed Int |
+| **15** | Pressure | `bar` | `0x68 - 0x6B` | Signed Int |
+| **16** | Date and Time | `ISO8601` | `0x6D` | MbusDateTime |
 
 ```note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
