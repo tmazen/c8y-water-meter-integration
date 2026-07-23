@@ -134,9 +134,9 @@ The Rust decoder uses a data-driven lookup table to parse raw wM-Bus/OMS payload
 | **`01FD`** | Device Status | Error flags, tamper alerts, or battery status | Bitmask / Code |
 | **`02FD`** | Battery Life | Remaining battery operating lifetime | Days / Years |
 
-{b3}note
+```note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
-
+```
 ---
 
 ## Extending for Other OMS Payloads
