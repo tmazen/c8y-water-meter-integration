@@ -103,7 +103,7 @@ The microservice decodes wireless M-Bus / OMS telemetry payloads sent by LwM2M g
 
 | Manufacturer | Model / Series | Protocol / Mode | Key Telemetry Supported |
 | :--- | :--- | :--- | :--- |
-| **Axioma Metering** | **Qalcosonic W1** | wM-Bus / OMS (868 MHz) | Volume, Flow Rate, Flow/Return Temp, Battery, Error Flags |
+| **Axioma Metering** | **Qalcosonic W1** | wM-Bus / OMS (868 MHz) | Volume, Flow Rate, Flow Temperature, Battery |
   
 ---
 ## Building and Packaging
