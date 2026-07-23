@@ -119,7 +119,7 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 ---
 ## Supported DIF / DIFE / VIF / VIFE Headers
 
-The Rust decoder uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
+The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
 
 | HeaderRaw | Category / Metric | Description | Expected Unit |
 | :--- | :--- | :--- | :--- |
