@@ -121,22 +121,24 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 
 The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
 
-| HeaderRaw / Match | Category / Metric | Description | Unit | Quantity | Data Type |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`046D`** (`0x6D`) | Date and Time | Meter timestamp | ISO8601 | Time | `MbusDateTime` |
-| **`0413`** (`0x10`) | Volume | Accumulated liquid volume | $m^3$ | Volume | `UnsignedInteger` |
-| **`023B`** (`0x38`) | Volume Flow | Instantaneous flow rate | $m^3/h$ | Volume | `UnsignedInteger` |
-| **`0258`** (`0x58`) | Flow Temperature | Supply/Flow pipe temperature | °C | Temperature | `SignedInteger` |
-| **`025C`** (`0x5C`) | Return Temperature | Return pipe temperature | °C | Temperature | `SignedInteger` |
-| **`0260`** (`0x60`) | Temperature Difference | Differential temperature ($\Delta T$) | K | Temperature | `SignedInteger` |
-| **`0264`** (`0x64`) | External Temperature | Ambient/Outdoor temperature | °C | Temperature | `SignedInteger` |
-| **`0228`** (`0x28`) | Power | Instantaneous power (Watts) | W | Power | `UnsignedInteger` |
-| **`0230`** (`0x30`) | Power | Power in Joules/hour | J/h | Power | `UnsignedInteger` |
-| **`0400`** (`0x00`) | Energy | Thermal/Electrical energy in Watt-hours | Wh | Energy | `UnsignedInteger` |
-| **`0408`** (`0x08`) | Energy | Energy in Joules | J | Energy | `UnsignedInteger` |
-| **`0268`** (`0x68`) | Pressure | System pressure | bar | Pressure | `SignedInteger` |
-| **`0x20`** | On Time | Active system duration | seconds | Time | `UnsignedInteger` |
-| **`0x24`** | Operating Time | Total operational uptime | seconds | Time | `UnsignedInteger` |
+| Rule # | VIF Mask | VIF Match Range | Metric Name | Quantity | Base Unit | Exponent Mapping Multipliers | Data Type |
+| :---: | :---: | :---: | :--- | :--- | :---: | :--- | :--- |
+| **1** | `0xF8` | `0x00 - 0x07` | Energy | `Quantity::Energy` | `Wh` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
+| **2** | `0xF8` | `0x08 - 0x0F` | Energy | `Quantity::Energy` | `J` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
+| **3** | `0xF8` | `0x60 - 0x67` | Energy | `Quantity::Energy` | `Cal` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
+| **4** | `0xF8` | `0x10 - 0x17` | Volume | `Quantity::Volume` | `m³` | $10^{{-6}}, 10^{{-5}}, 10^{{-4}}, 10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}$ | `UnsignedInteger` |
+| **5** | `0xF8` | `0x18 - 0x1F` | Mass | `Quantity::Mass` | `kg` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
+| **6** | `0xFC` | `0x20 - 0x23` | On Time | `Quantity::Time` | `seconds` | $10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}$ | `UnsignedInteger` |
+| **7** | `0xFC` | `0x24 - 0x27` | Operating Time | `Quantity::Time` | `seconds` | $10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}$ | `UnsignedInteger` |
+| **8** | `0xF8` | `0x28 - 0x2F` | Power | `Quantity::Power` | `W` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
+| **9** | `0xF8` | `0x30 - 0x37` | Power | `Quantity::Power` | `J/h` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}, 10^{{2}}, 10^{{3}}, 10^{{4}}$ | `UnsignedInteger` |
+| **10** | `0xF8` | `0x38 - 0x3F` | Volume Flow | `Quantity::Volume` | `m³/h` | $10^{{-6}}, 10^{{-5}}, 10^{{-4}}, 10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}, 10^{{1}}$ | `UnsignedInteger` |
+| **11** | `0xFC` | `0x58 - 0x5B` | Flow Temperature | `Quantity::Temperature` | `°C` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
+| **12** | `0xFC` | `0x5C - 0x5F` | Return Temperature | `Quantity::Temperature` | `°C` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
+| **13** | `0xFC` | `0x60 - 0x63` | Temperature Difference | `Quantity::Temperature` | `K` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
+| **14** | `0xFC` | `0x64 - 0x67` | External Temperature | `Quantity::Temperature` | `°C` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
+| **15** | `0xFC` | `0x68 - 0x6B` | Pressure | `Quantity::Pressure` | `bar` | $10^{{-3}}, 10^{{-2}}, 10^{{-1}}, 10^{{0}}$ | `SignedInteger` |
+| **16** | `0xFF` | `0x6D` | Date and Time | `Quantity::Time` | `ISO8601` | $10^{{0}}$ | `MbusDateTime` |
 
 ```note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
