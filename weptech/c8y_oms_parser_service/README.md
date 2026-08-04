@@ -458,4 +458,4 @@ rm image.tar
 2. Go to **Administration** -> **Ecosystem** -> **Microservices**.
 3. Click **Add Microservice** and upload \`c8y-oms-parser.zip\`.
 4. Verify that the health status turns **Green / UP**.
-'''
+```
