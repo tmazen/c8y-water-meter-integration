@@ -68,6 +68,66 @@ TO be Changed...........
 | **`AxiomaDriver`** | `AXI` / `ASI` | Axioma Qalcosonic W1 | Unencrypted, Mode 5 |
 | **`StandardOmsDriver`**| Any Valid OMS Code | Generic OMS-compliant meters (Fallback) | Standard Mode 5 / Mode 7 |
 
+
+
+---
+
+## REST API Specification
+
+### Endpoint: `POST /api/v1/parse`
+
+#### Request Payload
+```json
+{
+  "payload": "iAEEA2k...",
+  "oms_mode": 7,
+  "encryptionkey": "00112233445566778899AABBCCDDEEFF"
+}
+```
+
+* `payload` *(string, required)*: Base64-encoded raw wM-Bus radio frame.
+* `oms_mode` *(number, optional)*: Security mode override (`5` or `7`). If omitted, auto-detected.
+* `encryptionkey` *(string, optional)*: Hex-encoded AES key.
+
+#### Successful Response (`200 OK`)
+```json
+{
+  "status": "success",
+  "data": {
+    "driver_name": "DiehlDriver",
+    "manufacturer": "DME",
+    "device_type": 7,
+    "dll": {
+      "manufacturer_code": "DME",
+      "device_type_raw": 7,
+      "version": 99
+    },
+    "measurements": [
+      {
+        "header_raw": "0413",
+        "storage_no": 0,
+        "tariff": 0,
+        "device": 0,
+        "dib": "04",
+        "vib": "13",
+        "value": "1245.892",
+        "unit": "m³",
+        "description": "Volume"
+      }
+    ],
+    "payload_fields": {
+      "mode": 7
+    }
+  },
+  "error": null
+}
+```
+
+#### Error Responses
+* **`400 Bad Request`**: Base64 decoding error or invalid hex encryption key.
+* **`422 Unprocessable Entity`**: Payload cannot be parsed or no compatible driver claimed the header.
+
+
 ---
 
 ## Usage & API Reference
