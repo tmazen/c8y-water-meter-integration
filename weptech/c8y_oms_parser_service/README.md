@@ -209,12 +209,27 @@ The framework divides meters into two categories: **Strict OMS Standard** and **
 
 If a new meter (e.g., standard water meter with manufacturer code `LGW`) uses default OMS DIF/VIF structures, you do **not** need to create a new driver file. Simply extend the candidate matching rules in `StandardOmsDriver`.
 
-#### Step 1: Update Header Detection (`src/drivers/standard_oms.rs`)
+#### Step 1: Add New File (`src/drivers/standard_oms.rs`)
 
-Modify the `supports` method in the standard driver to accept the new manufacturer code:
+Create `src/drivers/standard_oms.rs` and implement the standard candidate matching and parsing routines:
 
 ```rust
+use crate::traits::{MeterDriver, ProcessResult, DriverError, MBusHeader};
+use crate::parser::dif_vif;
+
+pub struct StandardOmsDriver;
+
+impl StandardOmsDriver {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
 impl MeterDriver for StandardOmsDriver {
+    fn name(&self) -> &'static str {
+        "StandardOmsDriver"
+    }
+
     fn supports(&self, header: &MBusHeader) -> bool {
         match header.manufacturer.as_str() {
             "LGW" | "GEN" | "OMS" => true,
@@ -224,7 +239,14 @@ impl MeterDriver for StandardOmsDriver {
 
     fn parse(&self, payload: &[u8], oms_mode: Option<u8>, key: Option<&[u8]>) -> Result<ProcessResult, DriverError> {
         // Uses standard DIF/VIF chain parser
-        parse_standard_oms_records(payload, oms_mode, key)
+        let measurements = dif_vif::parse_standard_oms_records(payload, oms_mode, key)?;
+        Ok(ProcessResult {
+            driver_name: self.name().into(),
+            manufacturer: "OMS".into(),
+            device_type: 0x07,
+            measurements,
+            payload_fields: serde_json::json!({}),
+        })
     }
 }
 ```
