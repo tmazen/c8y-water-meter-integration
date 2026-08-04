@@ -130,80 +130,7 @@ TO be Changed...........
 
 ---
 
-## Usage & API Reference
-
-### Health Check
-Cumulocity uses this endpoint for liveness and readiness probes.
-
-* **URL:** \`GET /health\`
-* **Response:** \`200 OK\`
-
-```json
-{
-  "status": "UP"
-}
-```
-
----
-
-### Payload Decoding Endpoint
-
-* **URL:** `POST /parse`
-* **Headers:** `Content-Type: application/json`
-
-#### Example Request:
-```json
-{
-  "payload": "2E44933B00000000046D33130701041300000000"
-}
-```
-
-#### Example Response:
-```json
-{
-  "ProgState": "Success",
-  "DLL": {
-    "DeviceType": "WaterMeter",
-    "IdentificationNo": "09724574",
-    "Manufacturer": "AXI"
-  },
-  "ParsedMeasurements": [
-    {
-      "RecordIndex": 0,
-      "HeaderRaw": "046D",
-      "DIF": "0x04",
-      "VIF": "0x6D",
-      "Name": "Date and Time",
-      "Quantity": "Time",
-      "Unit": "ISO8601",
-      "Value": "2026-07-01T13:33:00"
-    },
-    {
-      "RecordIndex": 1,
-      "HeaderRaw": "0413",
-      "DIF": "0x04",
-      "VIF": "0x13",
-      "Name": "Volume",
-      "Quantity": "Volume",
-      "Unit": "m³",
-      "Value": 0.0
-    },
-    {
-      "RecordIndex": 2,
-      "HeaderRaw": "04933B",
-      "DIF": "0x04",
-      "VIF": "0x93",
-      "Name": "Volume Accumulation (Forward Flow)",
-      "Quantity": "Volume",
-      "Unit": "m³",
-      "Value": 12.45
-    }
-  ]
-}
-```
-
----
-
+to be changed ........
 ## HeaderRaw Reference Map
 
 When mapping outputs in your downstream Microservice match against `HeaderRaw`:
@@ -219,6 +146,7 @@ When mapping outputs in your downstream Microservice match against `HeaderRaw`:
 | `01FD74` | Remaining Battery Life (Days) |
 
 ---
+to be changed ........
 ## Supported DIF / DIFE / VIF / VIFE Headers
 
 The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload fields. The following table lists the primary supported `HeaderRaw` combinations and their mapped physical measurements:
@@ -245,6 +173,7 @@ The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload
 
 
 ### Special VIF Overrides (parse_vif)
+to be changed ........
 | Trigger Bytes | Metric Name | Unit |
 | :--- | :--- | :-: |
 | `0xFD` + `0x74` | Remaining Battery Life | `day(s)` |
@@ -255,63 +184,182 @@ The microservice uses a data-driven lookup table to parse raw wM-Bus/OMS payload
 ```note
 Unrecognized VIF/DIF combinations will be safely ignored or captured under raw fallback objects to ensure payload parsing never fails the entire batch.
 ```
+
 ---
 
-## Extending for Other OMS Payloads
+## Adding Support for New Meters
 
-Your application uses a **Data-Driven Meta Quantity Layout** backed by `VIF_LOOKUP_TABLE` and the `parse_vif()` function in `main.rs`.
+The framework divides meters into two categories: **Strict OMS Standard** and **OMS Extensions / Vendor-Specific Profiles**.
 
-### Step 1: Adding Standard VIF Rules (`VIF_LOOKUP_TABLE`)
-To add support for a new unit or metric family (e.g., Reactive Power, Voltage, Current, or Gas), add a new `VifRule` struct to `VIF_LOOKUP_TABLE`:
-
-```rust
-const VIF_LOOKUP_TABLE: &[VifRule] = &[
-    // ... existing rules ...
-
-    // Example: Adding Voltage support (VIF range 0x48 - 0x4F)
-    VifRule { 
-        vif_mask: 0xF8, 
-        vif_match: 0x48, 
-        name: "Voltage", 
-        unit: "V", 
-        exponent_mapping: [-9, -8, -7, -6, -5, -4, -3, -2], 
-        data_type: DataType::UnsignedInteger, 
-        quantity: Quantity::Unknown 
-    },
-];
+```text
+                      Is the meter 100% compliant 
+                          with OMS DIF/VIF spec?
+                             /              \
+                            /                \
+                         [YES]              [NO]
+                          /                  \
+                         v                    v
+            Register Header in          Implement Custom
+           `StandardOmsDriver`          `MeterDriver` Trait
 ```
 
-### Step 2: Adding VIFE / Extension Exceptions (`parse_vif`)
-For multi-byte VIF extended codes (such as `0xFD` status bytes or specific sub-VIF definitions like forward/backward flow), update `parse_vif()`:
+---
+
+### Scenario A: Adding a Meter that Strictly Follows the OMS Standard
+
+If a new meter (e.g., standard water meter with manufacturer code `LGW`) uses default OMS DIF/VIF structures, you do **not** need to create a new driver file. Simply extend the candidate matching rules in `StandardOmsDriver`.
+
+#### Step 1: Update Header Detection (`src/drivers/standard_oms.rs`)
+
+Modify the `supports` method in the standard driver to accept the new manufacturer code:
 
 ```rust
-fn parse_vif(vif: u8, extended_vif_type: bool, current_vif: u8) -> MeasurementDescriptor {
-    if extended_vif_type {
-        // Example: Extended status table check
-        if vif == 0xFD && current_vif == 0x17 {
-            return MeasurementDescriptor { 
-                name: "Error flags (binary)", 
-                unit: "Bitmask", 
-                exponent: 0, 
-                data_type: DataType::UnsignedInteger, 
-                quantity: Quantity::StatusAndDiagnostics 
-            };
-        }
-        return MeasurementDescriptor { name: "Manufacturer Extension", unit: "None", exponent: 0, data_type: DataType::Unknown, quantity: Quantity::Unknown };
-    }
-
-    let vif_clean = vif & 0x7F;
-
-    // Example: Handling specific sub-VIF byte combinations
-    if vif_clean == 0x13 {
-        if current_vif == 0x3B {
-            return MeasurementDescriptor { name: "Volume Accumulation (Forward Flow)", unit: "m³", exponent: -3, data_type: DataType::UnsignedInteger, quantity: Quantity::Volume };
+impl MeterDriver for StandardOmsDriver {
+    fn supports(&self, header: &MBusHeader) -> bool {
+        match header.manufacturer.as_str() {
+            "LGW" | "GEN" | "OMS" => true,
+            _ => false,
         }
     }
 
-    // Falls back to VIF_LOOKUP_TABLE iteration...
+    fn parse(&self, payload: &[u8], oms_mode: Option<u8>, key: Option<&[u8]>) -> Result<ProcessResult, DriverError> {
+        // Uses standard DIF/VIF chain parser
+        parse_standard_oms_records(payload, oms_mode, key)
+    }
 }
 ```
+
+#### Step 2: Register Candidate in DriverRegistry (`src/registry.rs`)
+
+Ensure `StandardOmsDriver` is present in the pipeline execution list:
+
+```rust
+pub fn build_driver_registry() -> DriverRegistry {
+    let mut registry = DriverRegistry::new();
+    registry.register(Box::new(DiehlDriver::new()));
+    registry.register(Box::new(AxiomaDriver::new()));
+    
+    // Catch-all standard fallback driver
+    registry.register(Box::new(StandardOmsDriver::new())); 
+    registry
+}
+```
+
+---
+
+### Scenario B: Adding a Meter that Extends or Deviates from OMS
+
+When a manufacturer uses **proprietary VIF codes (`0xFD` / `0xFF`)**, non-standard header offsets, or custom encrypted payload layouts, implement a dedicated driver.
+
+#### Step 1: Create the Driver Module (`src/drivers/custom_vendor.rs`)
+
+Create a new file `src/drivers/custom_vendor.rs` implementing the `MeterDriver` trait:
+
+```rust
+use crate::traits::{MeterDriver, ProcessResult, DriverError, MBusHeader};
+use crate::parser::dif_vif;
+
+pub struct CustomVendorDriver;
+
+impl CustomVendorDriver {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl MeterDriver for CustomVendorDriver {
+    fn name(&self) -> &'static str {
+        "CustomVendorDriver"
+    }
+
+    fn supports(&self, header: &MBusHeader) -> bool {
+        // Example: Manufacturer code "NB", Type 0x9E, Version 0xEE
+        header.manufacturer == "NB" && header.device_type == 0x9E
+    }
+
+    fn parse(
+        &self, 
+        payload: &[u8], 
+        oms_mode: Option<u8>, 
+        key: Option<&[u8]>
+    ) -> Result<ProcessResult, DriverError> {
+        // 1. Perform custom transport header stripping or key/IV adjustments
+        let decrypted = decrypt_vendor_payload(payload, oms_mode, key)?;
+
+        // 2. Extract standard records using core DIF/VIF parser
+        let mut measurements = dif_vif::parse_records(&decrypted)?;
+
+        // 3. Handle Vendor-Specific Ext VIFs (e.g., 0xFD 0x17 for custom diagnostic)
+        for measurement in measurements.iter_mut() {
+            if measurement.vib == "FD17" {
+                measurement.description = "Vendor Specific Alarm Vector".into();
+                measurement.unit = "bitfield".into();
+            }
+        }
+
+        Ok(ProcessResult {
+            driver_name: self.name().into(),
+            manufacturer: "NB".into(),
+            device_type: 0x9E,
+            measurements,
+            payload_fields: serde_json::json!({ "custom_field": true }),
+        })
+    }
+}
+```
+
+#### Step 2: Expose Module (`src/drivers/mod.rs`)
+
+Export the new module:
+
+```rust
+pub mod axioma;
+pub mod diehl;
+pub mod standard_oms;
+pub mod custom_vendor; // Add new module
+```
+
+#### Step 3: Register in Driver Registry (`src/registry.rs`)
+
+Add the driver to the registry pipeline. **Order matters**: place specific vendor drivers *before* the generic fallback driver.
+
+```rust
+use crate::drivers::custom_vendor::CustomVendorDriver;
+
+pub fn build_driver_registry() -> DriverRegistry {
+    let mut registry = DriverRegistry::new();
+    
+    // Specific vendor drivers
+    registry.register(Box::new(DiehlDriver::new()));
+    registry.register(Box::new(AxiomaDriver::new()));
+    registry.register(Box::new(CustomVendorDriver::new())); // Registered
+    
+    // Generic fallback driver
+    registry.register(Box::new(StandardOmsDriver::new())); 
+    
+    registry
+}
+```
+
+#### Step 4: Add Unit & Integration Tests (`tests/custom_vendor_test.rs`)
+
+Verify driver detection and parsing with sample base64 payloads:
+
+```rust
+#[test]
+fn test_custom_vendor_parsing() {
+    let registry = build_driver_registry();
+    let raw_payload = base64::decode("...").unwrap();
+    
+    let result = registry.process(&raw_payload, Some(7), None);
+    assert!(result.is_ok());
+    
+    let process_data = result.unwrap();
+    assert_eq!(process_data.driver_name, "CustomVendorDriver");
+}
+```
+
+---
 
 ## Building and Packaging
 
