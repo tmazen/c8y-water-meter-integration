@@ -1,17 +1,37 @@
 # c8y-oms-parser Microservice
 
-A high-performance Rust-based microservice designed for Cumulocity. This service receives Base64-encoded wireless M-Bus (wM-Bus) and OMS (Open Metering System) frames from upstream services, parses DIF/DIFE/VIF/VIFE headers using a data-driven lookup table, and returns structured measurement JSON.
+A high-performance, containerized Rust microservice built on **Axum** and **Tokio** designed for Cumulocity. It parses, decrypts (Mode 5 / Mode 7), and extracts telemetric records from Wireless M-Bus (wM-Bus) and Open Metering System (OMS) payloads.
 
-> **Important Note:** This microservice handles **unencrypted payloads only**. Any encrypted wM-Bus frames (such as OMS Mode 5 security profiles) must be decrypted upstream or decrypted prior to being passed into the `/api/v1/parse` endpoint.
 ---
 
 ## Architecture & Integration Flow
 
 ```
-+--------------------------+    HTTP POST /api/v1/parse     +-------------------------+
-|  Cumulocity MicroService | -----------------------------> |  c8y-oms-parser (Rust)  |
-|                          | <----------------------------- |  (Port 80)              |
-+--------------------------+      Decoded JSON Payload      +-------------------------+
+  +-------------------------------------------------------------+
+  |                   Cumulocity Platform.                      |
+  +-------------------------------------------------------------+
+                                |
+                   HTTP POST /api/v1/parse
+                   (Base64 Payload + Key + OMS Mode)
+                                |
+                                v
+  +-------------------------------------------------------------+
+  |                    Axum Web Framework                       |
+  |  - Request Auditing & Sensitive Key Masking (`main.rs`)     |
+  +-------------------------------------------------------------+
+                                |
+                                v
+  +-------------------------------------------------------------+
+  |                     DriverRegistry                          |
+  |  - Header Extraction (M-Field, Device Type, Version)        |
+  |  - Driver Dispatch (Exact Match -> Standard Fallback)       |
+  +-------------------------------------------------------------+
+         /                      |                      \
+        v                       v                       v
++---------------+       +---------------+       +---------------+
+| Axioma Driver |       | Diehl Driver  |       | Standard OMS  |
+|  (AXI / ASI)  |       |   (HYDRUS)    |       | Driver        |
++---------------+       +---------------+       +---------------+
 ```
 
 1. The ** Microservice** sends a raw hexadecimal telemetry frame to the Rust microservice via Cumulocity's internal proxy (`http://cumulocity:8111/service/c8y-oms-parser/decode`).
