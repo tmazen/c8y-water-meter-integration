@@ -79,9 +79,9 @@ When mapping outputs in downstream Cumulocity microservices, any other external 
 ---
 
 ## Supported DIF / DIFE / VIF / VIFE Reference
-The core Rust parser (`dif_vif` module) decodes raw M-Bus frames using dynamic lookup tables. The primary standard VIF mappings and extended vendor overrides are detailed below:\n")
+The core Rust parser (`dif_vif` module) decodes raw M-Bus frames using dynamic lookup tables. The primary standard VIF mappings and extended vendor overrides are detailed below:
     
-### Standard VIF Lookup Table")
+### Standard VIF Lookup Table
 | # | Metric Name | Unit | VIF Hex Range | Rust Decoder Type |
 | :-: | :--- | :-: | :--- | :--- |
 | **1** | Energy | `Wh` | `0x00 - 0x07` | Unsigned Integer / Scalar |
