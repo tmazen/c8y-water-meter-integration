@@ -64,8 +64,8 @@ TO be Changed...........
 
 | Driver Name | Manufacturer Code (M-Field) | Target Hardware | Decryption Support |
 | :--- | :--- | :--- | :--- |
-| **`DiehlDriver`** | `DME` (`0x11A5`) | Diehl HYDRUS Ultrasonic Water Meter, SHARKY Heat Meters | Mode 5 (AES-CBC), Mode 7 (AES-CTR/GCM) |
-| **`AxiomaDriver`** | `AXI` / `ASI` | Axioma Qalcosonic W1 / E3 | Unencrypted, Mode 5, Mode 7 |
+| **`DiehlDriver`** | `DME` (`0x11A5`) | Diehl HYDRUS Ultrasonic Water Meter | Mode 7 (AES-CTR/GCM) |
+| **`AxiomaDriver`** | `AXI` / `ASI` | Axioma Qalcosonic W1 | Unencrypted, Mode 5 |
 | **`StandardOmsDriver`**| Any Valid OMS Code | Generic OMS-compliant meters (Fallback) | Standard Mode 5 / Mode 7 |
 
 ---
