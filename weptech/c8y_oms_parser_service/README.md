@@ -102,7 +102,7 @@ TO be Changed...........
       "device_type_raw": 7,
       "version": 99
     },
-    "measurements": [
+    "parsedMeasurements": [
       {
         "header_raw": "0413",
         "storage_no": 0,
