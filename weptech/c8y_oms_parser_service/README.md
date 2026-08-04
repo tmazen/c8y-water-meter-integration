@@ -69,13 +69,13 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 When mapping outputs in downstream Cumulocity microservices, any other external service, match against the `header_raw` field in extracted measurements:
 | `header_raw` | Description | Typical Unit | JSON Value Example |
 | :--- | :--- | :--- | :--- |
-| `046D` | Date and Time string | ISO8601 | `"2026-08-04T10:00:00Z"` |
-| `0413` | Standard Volume | `m³` | `"1245.892"` |
-| `04933B` | Forward Flow Volume Accumulation | `m³` | `"1100.500"` |
-| `04933C` | Backward Flow Volume Accumulation | `m³` | `"145.392"` |
-| `023B` | Volume Flow Rate | `m³/h` | `"1.250"` |
-| `0259` | Flow Temperature | `°C` | `"18.5"` |
-| `01FD74` | Remaining Battery Life | `months` | `"3650"` |
+| `046D` | Date and Time string | ISO8601 | `2026-08-04T10:00:00Z` |
+| `0413` | Standard Volume | `m³` | `1245.892` |
+| `04933B` | Forward Flow Volume Accumulation | `m³` | `1100.500` |
+| `04933C` | Backward Flow Volume Accumulation | `m³` | `145.392` |
+| `023B` | Volume Flow Rate | `m³/h` | `1.250` |
+| `0259` | Flow Temperature | `°C` | `18.5` |
+| `01FD74` | Remaining Battery Life | `months` | `97` |
 ---
 
 ## Supported DIF / DIFE / VIF / VIFE Reference\n")
