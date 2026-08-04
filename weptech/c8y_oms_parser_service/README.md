@@ -3,6 +3,15 @@
 A high-performance, containerized Rust microservice built on **Axum** and **Tokio** designed for Cumulocity. It parses, decrypts (Mode 5 / Mode 7), and extracts telemetric records from Wireless M-Bus (wM-Bus) and Open Metering System (OMS) payloads.
 
 ---
+# Features Section
+## Features
+* **Multi-Mode Decryption Support**: Engineered to parse unencrypted payloads as well as encrypted wM-Bus/OMS data streams utilizing Mode 5 (AES-CBC) and Mode 7 (AES-CTR/GCM) with dynamic IV resolution.
+* **Driver Registry Architecture**: Extensible, trait-based driver dispatch system (`MeterDriver`) supporting manufacturer-specific profiles (Diehl, Axioma) alongside standard OMS fallbacks.
+* **DIF/VIF Record Parsing**: Decodes standard and extended M-Bus data structures including Volume, Energy, Flow Rates, Temperatures, Time, Diagnostic Alarm Vectors, and Battery Status.
+* **Exact Field & Record Tracking**: Exposes `header_raw`, `dib`, `vib`, `storage_no`, `tariff`, and `device` indices for every measurement, enabling upstream applications to differentiate identical physical quantities (e.g., Forward vs. Return Flow).
+* **Enterprise Auditability & Key Masking**: Integrated `tracing` structured logging that automatically redacts sensitive AES keys and cleans payload attributes for secure, non-ANSI Cloud Logging Compliance.
+* **Low Footprint & Async Throughput**: Built in pure Rust on top of Axum/Tokio for near-zero memory footprint and ultra-fast, concurrent execution under high-volume IoT microservice loads.
+---
 
 ## Architecture & Integration Flow
 
@@ -46,21 +55,6 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 * **Target Container**: Docker (`linux/amd64`), binding on port `80`.
 * **Logging & Auditing**: Non-ANSI, JSON-friendly structured logs (`tracing`) with automatic AES key redaction.
 * **Extensibility**: Trait-based `MeterDriver` pattern enabling fast support for new manufacturer profiles without breaking core OMS parsing.
----
-TO be Changed...........
-## Features
-
-- **Unencrypted Payload Processing:** Specifically engineered to parse plain text/unencrypted wM-Bus/OMS data streams efficiently.
-- **DIF/VIF Parsing:** Decodes standard M-Bus data structures (Volume, Flow, Temperatures, Time, Battery Status).
-- **Exact Field Tracking:** Exposes `HeaderRaw` and `RecordIndex` for every measurement, allowing client applications to distinguish between identical quantities (e.g., Forward Flow vs. Backward Flow volume).
-- **Low Footprint:** Built with Rust for minimal memory consumption and rapid execution under heavy loads.
-
-### Core Characteristics
-* **Runtime**: Axum on Tokio (Async I/O).
-* **Target Container**: Docker (`linux/amd64`), binding on port `80`.
-* **Logging & Auditing**: Non-ANSI, JSON-friendly structured logs (`tracing`) with automatic AES key redaction.
-* **Extensibility**: Trait-based `MeterDriver` pattern enabling fast support for new manufacturer profiles without breaking core OMS parsing.
-
 ---
 
 ## Supported Drivers & Meters
