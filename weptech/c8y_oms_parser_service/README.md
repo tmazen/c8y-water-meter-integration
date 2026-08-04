@@ -33,13 +33,13 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 |  (AXI / ASI)  |       |   (HYDRUS)    |       | Driver        |
 +---------------+       +---------------+       +---------------+
 ```
-
-1. The ** Microservice** sends a raw hexadecimal telemetry frame to the Rust microservice via Cumulocity's internal proxy (`http://cumulocity:8111/service/c8y-oms-parser/decode`).
+TO be Changed...........
+1. The ** Microservice** sends a raw hexadecimal telemetry frame to the Rust microservice via Cumulocity's internal proxy (`http://cumulocity:8111/service/c8y-oms-parser/parse`).
 2. The **Rust Microservice** parses the data frame and extracts individual measurement registers along with `HeaderRaw` (DIF+VIF+VIFE bytes), `RecordIndex`, values, and units.
 3. The response is returned as a lightweight JSON object to be processed into Cumulocity `MeasurementRepresentation` objects.
 
 ---
-
+TO be Changed...........
 ## Features
 
 - **Unencrypted Payload Processing:** Specifically engineered to parse plain text/unencrypted wM-Bus/OMS data streams efficiently.
