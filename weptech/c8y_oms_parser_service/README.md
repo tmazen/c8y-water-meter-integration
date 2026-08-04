@@ -78,7 +78,7 @@ When mapping outputs in downstream Cumulocity microservices, any other external 
 | `01FD74` | Remaining Battery Life | `months` | `97` |
 ---
 
-## Supported DIF / DIFE / VIF / VIFE Reference\n")
+## Supported DIF / DIFE / VIF / VIFE Reference
 The core Rust parser (`dif_vif` module) decodes raw M-Bus frames using dynamic lookup tables. The primary standard VIF mappings and extended vendor overrides are detailed below:\n")
     
 ### Standard VIF Lookup Table")
