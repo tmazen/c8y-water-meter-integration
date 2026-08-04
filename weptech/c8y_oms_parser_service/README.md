@@ -66,7 +66,7 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 
 ---
 ## HeaderRaw Reference Map
-When mapping outputs in downstream Cumulocity microservices, Cumulocity Processing Rules (Apama CEP), or SmartREST templates, match against the `header_raw` field in extracted measurements:
+When mapping outputs in downstream Cumulocity microservices, any other external service, match against the `header_raw` field in extracted measurements:
 | `header_raw` | Description | Typical Unit | JSON Value Example |
 | :--- | :--- | :--- | :--- |
 | `046D` | Date and Time string | ISO8601 | `"2026-08-04T10:00:00Z"` |
