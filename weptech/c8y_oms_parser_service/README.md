@@ -33,10 +33,13 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 |  (AXI / ASI)  |       |   (HYDRUS)    |       | Driver        |
 +---------------+       +---------------+       +---------------+
 ```
-TO be Changed...........
-1. The ** Microservice** sends a raw hexadecimal telemetry frame to the Rust microservice via Cumulocity's internal proxy (`http://cumulocity:8111/service/c8y-oms-parser/parse`).
-2. The **Rust Microservice** parses the data frame and extracts individual measurement registers along with `HeaderRaw` (DIF+VIF+VIFE bytes), `RecordIndex`, values, and units.
-3. The response is returned as a lightweight JSON object to be processed into Cumulocity `MeasurementRepresentation` objects.
+### Integration & Processing Flow
+1. **Payload Ingestion**: Cumulocity forwards incoming LNS/Gateway payloads (`POST /api/v1/parse`) containing base64 frames and optional AES encryption keys.
+2. **Middleware & Masking**: Axum handles incoming requests, logs execution metrics, and masks sensitive `encryptionkey` values before writing audit records.
+3. **Header Inspection**: `DriverRegistry` extracts M-Bus Data Link Layer (DLL) header parameters (Manufacturer M-Field, Device Type, and Version).
+4. **Driver Selection**: Registered drivers execute in priority sequence. Specific hardware drivers (e.g., `DiehlDriver`, `AxiomaDriver`) take precedence over generic standard handlers.
+5. **Decryption & Deframe**: The selected driver handles Mode 5 (AES-CBC) or Mode 7 (AES-CTR/GCM) payload decryption using dynamic vector initialization.
+6. **Measurement Extraction**: Records are converted into structured measurement objects containing values, units, tariffs, and storage numbers, then returned as JSON to Cumulocity.
 
 ### Core Characteristics
 * **Runtime**: Axum on Tokio (Async I/O).
