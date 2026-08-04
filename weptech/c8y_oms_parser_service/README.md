@@ -38,6 +38,11 @@ TO be Changed...........
 2. The **Rust Microservice** parses the data frame and extracts individual measurement registers along with `HeaderRaw` (DIF+VIF+VIFE bytes), `RecordIndex`, values, and units.
 3. The response is returned as a lightweight JSON object to be processed into Cumulocity `MeasurementRepresentation` objects.
 
+### Core Characteristics
+* **Runtime**: Axum on Tokio (Async I/O).
+* **Target Container**: Docker (`linux/amd64`), binding on port `80`.
+* **Logging & Auditing**: Non-ANSI, JSON-friendly structured logs (`tracing`) with automatic AES key redaction.
+* **Extensibility**: Trait-based `MeterDriver` pattern enabling fast support for new manufacturer profiles without breaking core OMS parsing.
 ---
 TO be Changed...........
 ## Features
@@ -46,6 +51,23 @@ TO be Changed...........
 - **DIF/VIF Parsing:** Decodes standard M-Bus data structures (Volume, Flow, Temperatures, Time, Battery Status).
 - **Exact Field Tracking:** Exposes `HeaderRaw` and `RecordIndex` for every measurement, allowing client applications to distinguish between identical quantities (e.g., Forward Flow vs. Backward Flow volume).
 - **Low Footprint:** Built with Rust for minimal memory consumption and rapid execution under heavy loads.
+
+### Core Characteristics
+* **Runtime**: Axum on Tokio (Async I/O).
+* **Target Container**: Docker (`linux/amd64`), binding on port `80`.
+* **Logging & Auditing**: Non-ANSI, JSON-friendly structured logs (`tracing`) with automatic AES key redaction.
+* **Extensibility**: Trait-based `MeterDriver` pattern enabling fast support for new manufacturer profiles without breaking core OMS parsing.
+
+---
+
+## Supported Drivers & Meters
+
+| Driver Name | Manufacturer Code (M-Field) | Target Hardware | Decryption Support |
+| :--- | :--- | :--- | :--- |
+| **`DiehlDriver`** | `DME` (`0x11A5`) | Diehl HYDRUS Ultrasonic Water Meter, SHARKY Heat Meters | Mode 5 (AES-CBC), Mode 7 (AES-CTR/GCM) |
+| **`AxiomaDriver`** | `AXI` / `ASI` | Axioma Qalcosonic W1 / E3 | Unencrypted, Mode 5, Mode 7 |
+| **`StandardOmsDriver`**| Any Valid OMS Code | Generic OMS-compliant meters (Fallback) | Standard Mode 5 / Mode 7 |
+
 ---
 
 ## Usage & API Reference
