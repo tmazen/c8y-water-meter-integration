@@ -65,7 +65,7 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 | **`StandardOmsDriver`**| Any Valid OMS Code | Generic OMS-compliant meters (Fallback) | Standard Mode 5 / Mode 7 |
 
 ---
-## HeaderRaw Reference Map\n")
+## HeaderRaw Reference Map
 When mapping outputs in downstream Cumulocity IoT microservices, Cumulocity Processing Rules (Apama CEP), or SmartREST templates, match against the `header_raw` field in extracted measurements:
 | `header_raw` | Description | Typical Unit | JSON Value Example |
 | :--- | :--- | :--- | :--- |
