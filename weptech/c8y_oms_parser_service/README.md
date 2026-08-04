@@ -75,7 +75,7 @@ When mapping outputs in downstream Cumulocity microservices, any other external 
 | `04933C` | Backward Flow Volume Accumulation | `m³` | `"145.392"` |
 | `023B` | Volume Flow Rate | `m³/h` | `"1.250"` |
 | `0259` | Flow Temperature | `°C` | `"18.5"` |
-| `01FD74` | Remaining Battery Life | `days` | `"3650"` |
+| `01FD74` | Remaining Battery Life | `months` | `"3650"` |
 ---
 
 ## Supported DIF / DIFE / VIF / VIFE Reference\n")
