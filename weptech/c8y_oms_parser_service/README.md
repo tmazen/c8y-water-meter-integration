@@ -3,7 +3,6 @@
 A high-performance, containerized Rust microservice built on **Axum** and **Tokio** designed for Cumulocity. It parses, decrypts (Mode 5 / Mode 7), and extracts telemetric records from Wireless M-Bus (wM-Bus) and Open Metering System (OMS) payloads.
 
 ---
-# Features Section
 ## Features
 * **Multi-Mode Decryption Support**: Engineered to parse unencrypted payloads as well as encrypted wM-Bus/OMS data streams utilizing Mode 5 (AES-CBC) and Mode 7 (AES-CTR/GCM) with dynamic IV resolution.
 * **Driver Registry Architecture**: Extensible, trait-based driver dispatch system (`MeterDriver`) supporting manufacturer-specific profiles (Diehl, Axioma) alongside standard OMS fallbacks.
