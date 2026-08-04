@@ -86,7 +86,7 @@ TO be Changed...........
 ```
 
 * `payload` *(string, required)*: Base64-encoded raw wM-Bus radio frame.
-* `oms_mode` *(number, optional)*: Security mode override (`5` or `7`). If omitted, auto-detected.
+* `oms_mode` *(number)*: Security mode override (`5` or `7`).
 * `encryptionkey` *(string, optional)*: Hex-encoded AES key.
 
 #### Successful Response (`200 OK`)
