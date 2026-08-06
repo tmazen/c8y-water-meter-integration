@@ -23,16 +23,18 @@ import org.springframework.stereotype.Service;
 
 
 import java.math.BigDecimal;
+
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.DateTimeFormat;
 import java.util.*;
-import java.io.IOException;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
+
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -48,6 +50,11 @@ import  com.cumulocity.rest.representation.inventory.ManagedObjectRepresentation
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 
 //@Component
 @Slf4j
@@ -85,8 +92,10 @@ public class OMSDecoderC8YParserService implements DecoderService{
         String meterSerial = "";
         String meterPayload = "";
         String meterEncryptionkey = "";
+        Long meterOmsMode = null;
         final String EXTERNAL_ID_TYPE = "c8y_Serial";
-        //final String ENCRYPTION_KEY_TYPE = "axioma_encryption_key";
+        final String ENCRYPTION_KEY_TYPE = "meter_encryption_key";
+        final String OMS_MODE = "oms_mode";
 
         log.info("Decoding OMS payload HEX {}.", payloadToDecode);
 
@@ -116,9 +125,31 @@ public class OMSDecoderC8YParserService implements DecoderService{
            ManagedObjectRepresentation  meterMO = getDeviceByExternalId(EXTERNAL_ID_TYPE, meterSerial);
 
            if (meterMO != null) {
+               // check if meter has encryption key
+               meterEncryptionkey =  (String)meterMO.get(ENCRYPTION_KEY_TYPE);
+               meterOmsMode = (Long)meterMO.get(OMS_MODE);
 
-               // call C*Y OMS parser
-               String responseBody = parseOMSPayload(meterPayload);
+               if (meterOmsMode == null ) {
+                   log.error("There is no OMS Mode configured for Meter with Serial {}", meterSerial);
+                   throw new DecoderServiceException(new Throwable("There is no OMS Mode configured for the Meter"), "There is no OMS Mode configured for the Meter",decoderResult );
+
+               }
+
+               String responseBody = null;
+
+               if(meterEncryptionkey != null && !meterEncryptionkey.trim().isEmpty()) {
+                   log.info("There is Encryption Key for the meter {}", meterEncryptionkey);
+                   //decrypt meter payload using key
+                   //meterPayload = dyecryptMeterPauload(meterEncryptionkey, meterPayload);
+
+                   //log.info("Decrypted payload for meter {} is {}",meterSerial ,meterPayload);
+                   // call C8Y OMS parser
+                    responseBody = parseOMSPayload(meterPayload, meterEncryptionkey, meterOmsMode.longValue());
+               } else {
+                   log.info("There is no Encryption Key for the meter");
+                   responseBody = parseOMSPayload(meterPayload, null, meterOmsMode.longValue());
+               }
+
 
                if (responseBody == null) {
                    log.error("There is no Response from OMS Parser ");
@@ -145,7 +176,7 @@ public class OMSDecoderC8YParserService implements DecoderService{
 
     }
 
-    private  String parseOMSPayload(String payloadToDecode) {
+    private  String parseOMSPayload(String payloadToDecode, String encryptionKey, long omsMode) {
 
         MicroserviceCredentials credentials = contextService.getContext();
         if (credentials == null) {
@@ -155,6 +186,12 @@ public class OMSDecoderC8YParserService implements DecoderService{
         try {
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("payload", payloadToDecode);
+
+            if (encryptionKey != null) {
+                requestBody.put("encryptionkey", encryptionKey);
+            }
+            requestBody.put("oms_mode", omsMode);
+
             String dynamicJsonBody = objectMapper.writeValueAsString(requestBody);
 
             log.info("Invoking custom c8y-oms-parser via native Java HttpClient...");
@@ -269,37 +306,64 @@ public class OMSDecoderC8YParserService implements DecoderService{
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(jsonString);
-            JsonNode drArray = root.at("/ParsedMeasurements");
+            //JsonNode drArray = root.at("/ParsedMeasurements");
+            JsonNode drArray = root.at("/data/parsedMeasurements");
 
             MeasurementRepresentation volumeMeasurement = new MeasurementRepresentation();
             MeasurementRepresentation volumeFlowMeasurement = new MeasurementRepresentation();
             MeasurementRepresentation flowTemperatureMeasurement = new MeasurementRepresentation();
             MeasurementRepresentation remainingBatteryMeasurement = new MeasurementRepresentation();
+            MeasurementRepresentation operatingTimeMeasurement = new MeasurementRepresentation();
 
             //Set source ID
             volumeMeasurement.setSource(meterMo);
             volumeFlowMeasurement.setSource(meterMo);
             flowTemperatureMeasurement.setSource(meterMo);
             remainingBatteryMeasurement.setSource(meterMo);
+            operatingTimeMeasurement.setSource(meterMo);
 
             if (drArray.isArray()) {
+                log.info("inside if  >>>>>>>>>>");
                 for (JsonNode node : drArray) {
-                    String header = node.get("HeaderRaw").asText();
-                    String value = node.has("Value") ? node.get("Value").asText() : "";
-                    String unit = node.has("Unit") ? node.get("Unit").asText() : "";
+                    //log.info("inside for >>>>>>>>>>>>>>>");
+                    //log.info("Node is  >>>>>>>>>>>>>>> {}", node);
+
+                    String header = node.get("header_raw").asText();
+                    String value = node.has("value") ? node.get("value").asText() : "";
+                    String unit = node.has("unit") ? node.get("unit").asText() : "";
 
                     switch (header) {
                         case "046D": // 1. Date and Time
-                            DateTime measurementTime = DateTime.now();
+                            log.info("Date: {}", value);
+                            //DateTime measurementTime = DateTime.now();
+                            DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
+                            DateTime measurementTime = formatter.parseDateTime(value);
 
                             volumeMeasurement.setDateTime(measurementTime);
                             volumeFlowMeasurement.setDateTime(measurementTime);
                             flowTemperatureMeasurement.setDateTime(measurementTime);
                             remainingBatteryMeasurement.setDateTime(measurementTime);
-
+                            operatingTimeMeasurement.setDateTime(measurementTime);
+                            log.info("measurementTime >>>>> {}", measurementTime);
                             break;
 
-                        case "0413": // 2. Volume
+                        case "0420": // 2. Operating Time
+                            log.info("Operating Time: {} {}", value, unit);
+
+                            operatingTimeMeasurement.setType("C8y_Meter_Operating_Time");
+
+                            MeasurementValue operatingTimeValue = new MeasurementValue();
+                            operatingTimeValue.setValue(new BigDecimal(value));
+                            operatingTimeValue.setUnit(unit);
+
+                            Map<String, MeasurementValue> operatingTimeSeries = new HashMap<>();
+                            operatingTimeSeries.put("Operating_Time", operatingTimeValue);
+
+                            operatingTimeMeasurement.set(operatingTimeSeries, "Meter_Operating_Time");
+                            log.info("operatingTimeMeasurement is >>>>> {}", operatingTimeMeasurement);
+                            break;
+
+                        case "0413": // 3. Volume
                             log.info("Volume: {} {}", value, unit);
 
                             volumeMeasurement.setType("C8y_Meter_Volume");
@@ -312,10 +376,10 @@ public class OMSDecoderC8YParserService implements DecoderService{
                             volumeSeries.put("V", volumeValue);
 
                             volumeMeasurement.set(volumeSeries, "Meter_Volume");
-
+                            log.info("volumeMeasurement is >>>>> {}", volumeMeasurement);
                             break;
 
-                        case "023B": // 3. Volume Flow
+                        case "023B": // 4. Volume Flow
                             log.info("Volume Flow: {} {}", value, unit);
 
                             volumeFlowMeasurement.setType("C8y_Meter_Volume_Flow");
@@ -327,9 +391,10 @@ public class OMSDecoderC8YParserService implements DecoderService{
                             volumeFlowSeries.put("Flow", volumeFlowValue);
 
                             volumeFlowMeasurement.set(volumeFlowSeries, "Meter_Volume_Flow");
+                            log.info("volumeFlowMeasurement is >>>>> {}", volumeFlowMeasurement);
                             break;
 
-                        case "0259": // 4. Flow Temperature
+                        case "0259": // 5. Flow Temperature
                             log.info("Flow Temperature: {} {}", value, unit);
 
                             flowTemperatureMeasurement.setType("C8y_Meter_Flow_Temperature");
@@ -341,9 +406,10 @@ public class OMSDecoderC8YParserService implements DecoderService{
                             flowTemperatureSeries.put("T", flowTemperatureValue);
 
                             flowTemperatureMeasurement.set(flowTemperatureSeries, "Meter_Flow_Temperature");
+                            log.info("flowTemperatureMeasurement is >>>>> {}", flowTemperatureMeasurement);
                             break;
 
-                        case "01FD74": // 5. Remaining Battery
+                       case "01FD74": // 6. Remaining Battery
                             log.info("Remaining Battery: {} {}", value, unit);
 
                             remainingBatteryMeasurement.setType("C8y_Meter_Remaining_Battery");
@@ -355,21 +421,26 @@ public class OMSDecoderC8YParserService implements DecoderService{
                             remainingBatterySeries.put("Remaining_Battery", remainingBatteryValue);
 
                             remainingBatteryMeasurement.set(remainingBatterySeries, "Meter_Remaining_Battery");
+                            log.info("remainingBatteryMeasurement is >>>>> {}", remainingBatteryMeasurement);
                             break;
                     }
                 } // end of for
 
                 // create Measurments
+
                 List<MeasurementRepresentation> list = Arrays.asList(
                         volumeMeasurement,
+                        operatingTimeMeasurement,
                         volumeFlowMeasurement,
                         flowTemperatureMeasurement,
-                        remainingBatteryMeasurement
+                       remainingBatteryMeasurement
                 );
                 MeasurementCollectionRepresentation collection = new MeasurementCollectionRepresentation();
                 collection.setMeasurements(list);
                 measurementApi.createBulk(collection);
                 log.info("Measurements are created successfully .....");
+            } else {
+                log.info("drArray is not an array");
             }
         } catch (Exception e) {
             log.error("Cannot Parse wMbus Payload.");
@@ -378,4 +449,54 @@ public class OMSDecoderC8YParserService implements DecoderService{
         }
     }
 
+   /* public static String dyecryptMeterPauload(String meterEncruptionKey, String meterEncryptedPayload) throws DecoderServiceException {
+
+        byte[] meterEncruptionKeyBytes = hexStringToByteArray(meterEncruptionKey);
+        byte[] meterEncryptedPayloadBytes = meterEncryptedPayload.getBytes();
+        String meterDecryptedPayload = "";
+
+        // 1. Build the 16-byte IV from the header parameters
+        byte[] iv = new byte[16];
+        // Manufacturer(2 bytes), Address(4 bytes), Version(1 byte), Type(1 byte)
+        System.arraycopy(meterEncryptedPayloadBytes, 2, iv, 0, 8);
+
+        // Access Number is at byte index 11 for Short Header (CI = 0x7A)
+        byte accessNo = meterEncryptedPayloadBytes[11];
+        for (int i = 8; i < 16; i++) {
+            iv[i] = accessNo;                    // Repeat Access No across bytes 8..15
+        }
+
+        // 2. Determine Ciphertext Offset and Length
+        int ciphertextOffset = 13; // Index where encrypted payload begins
+        int rawCiphertextLen = meterEncryptedPayloadBytes.length - ciphertextOffset;
+
+        // 3. FIX: Enforce block size alignment (truncate extra trailing RF/CRC bytes to multiple of 16)
+        int validCiphertextLen = (rawCiphertextLen / 16) * 16;
+
+        byte[] ciphertext = new byte[validCiphertextLen];
+        System.arraycopy(meterEncryptedPayloadBytes, ciphertextOffset, ciphertext, 0, validCiphertextLen);
+
+        // 4. Decrypt via AES-128-CBC
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+            SecretKeySpec keySpec = new SecretKeySpec(meterEncruptionKeyBytes, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            meterDecryptedPayload = Base64.getEncoder().encodeToString(cipher.doFinal(ciphertext));
+        } catch (Exception e) {
+            log.error("Cannot Decrypt Meter Payload.");
+            throw new DecoderServiceException(e, e.getMessage(), new DecoderResult());
+        }
+        return meterDecryptedPayload;
+    }*/
+
+    private static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i+1), 16));
+        }
+        return data;
+    }
 }
