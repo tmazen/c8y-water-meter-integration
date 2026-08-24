@@ -1,5 +1,5 @@
-//Defines core data structures, error types, and the driver interface (MeterDriver).
-
+// Defines core data structures, error types, and the driver interface (MeterDriver).
+//
 // src/traits.rs
 
 use serde::{Deserialize, Serialize};
@@ -25,6 +25,9 @@ pub enum ParseError {
 
     #[error("Invalid frame structure: {0}")]
     InvalidFrame(String),
+
+    #[error("Invalid header offset")]
+    InvalidHeader,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,48 +106,47 @@ impl DllHeader {
 // MBUS DECODING HELPERS
 // ============================================================================
 
-fn parse_unsigned(bytes: &[u8]) -> u64 {
-    let mut val = 0u64;
-    for (i, &b) in bytes.iter().take(8).enumerate() {
-        val |= (b as u64) << (i * 8);
+/// Helper to parse Little-Endian BCD bytes into a floating-point number.
+/// Decodes 2-digit (1B), 4-digit (2B), 6-digit (3B), 8-digit (4B), and 12-digit (6B) BCD fields.
+pub fn parse_bcd_bytes(data: &[u8]) -> f64 {
+    let mut val: u64 = 0;
+    let mut mult: u64 = 1;
+
+    for &byte in data {
+        let low = (byte & 0x0F) as u64;
+        let high = ((byte >> 4) & 0x0F) as u64;
+
+        // Fallback for non-standard BCD hex filler (e.g. 0xF)
+        let low = if low > 9 { 0 } else { low };
+        let high = if high > 9 { 0 } else { high };
+
+        val += (low + high * 10) * mult;
+        mult *= 100;
     }
-    val
+
+    val as f64
 }
 
-fn parse_signed(bytes: &[u8]) -> i64 {
-    if bytes.is_empty() {
-        return 0;
+fn parse_mbus_date(bytes: &[u8]) -> Option<String> {
+    if bytes.len() < 2 {
+        return None;
     }
-    let len = bytes.len().min(8);
-    let raw = parse_unsigned(&bytes[..len]);
-    let bits = len * 8;
-    if bits == 64 {
-        raw as i64
-    } else {
-        let shift = 64 - bits;
-        ((raw << shift) as i64) >> shift
-    }
-}
+    let raw_u16 = u16::from_le_bytes([bytes[0], bytes[1]]);
 
-fn parse_bcd(bytes: &[u8]) -> Option<u64> {
-    let mut val = 0u64;
-    let mut multiplier = 1u64;
-
-    for &b in bytes {
-        let low = b & 0x0F;
-        let high = (b >> 4) & 0x0F;
-
-        if low > 9 || high > 9 {
-            return None;
-        }
-
-        val += (low as u64) * multiplier;
-        multiplier *= 10;
-        val += (high as u64) * multiplier;
-        multiplier *= 10;
+    // 0xFFFF is the standard M-Bus sentinel for "Date Not Set"
+    if raw_u16 == 0xFFFF {
+        return Some("Unset".to_string());
     }
 
-    Some(val)
+    let day = (raw_u16 & 0x1F) as u32;
+    let month = ((raw_u16 >> 8) & 0x0F) as u32;
+    let year = (((raw_u16 >> 5) & 0x07) | ((raw_u16 >> 9) & 0x78)) as u32 + 2000;
+
+    if (1..=12).contains(&month) && (1..=31).contains(&day) {
+        return Some(format!("{:04}-{:02}-{:02}", year, month, day));
+    }
+
+    None
 }
 
 fn parse_mbus_datetime_f(bytes: &[u8]) -> Option<String> {
@@ -172,138 +174,211 @@ fn parse_mbus_datetime_f(bytes: &[u8]) -> Option<String> {
     None
 }
 
+/// Helper to parse DIF and DIFE stack metadata (Storage Number, Tariff, Device)
+fn parse_dif_dife_metadata(dif_stack: &[u8]) -> (u32, u32, u32) {
+    if dif_stack.is_empty() {
+        return (0, 0, 0);
+    }
+
+    let mut storage_no = ((dif_stack[0] >> 6) & 0x01) as u32;
+    let mut tariff = 0u32;
+    let mut device = 0u32;
+
+    if dif_stack.len() > 1 {
+        let dife1 = dif_stack[1];
+        storage_no |= ((dife1 & 0x0F) as u32) << 1;
+        tariff = ((dife1 >> 4) & 0x03) as u32;
+        device = ((dife1 >> 6) & 0x01) as u32;
+    }
+
+    if dif_stack.len() > 2 {
+        let dife2 = dif_stack[2];
+        storage_no |= ((dife2 & 0x0F) as u32) << 5;
+        tariff |= (((dife2 >> 4) & 0x03) as u32) << 2;
+    }
+
+    (storage_no, tariff, device)
+}
+
+/// Evaluates standard VIF / VIFE descriptors for measurement descriptions, units, and scales.
+pub fn parse_vif(primary_vif: u8, vif_stack: &[u8]) -> (String, String, f64) {
+    let base_vif = primary_vif & 0x7F;
+
+    // FD Extension VIFs (0xFD & 0x7F = 0x7D)
+    if base_vif == 0x7D && vif_stack.len() > 1 {
+        let vife = vif_stack[1] & 0x7F;
+        match vife {
+            0x17 => return ("Error Flags".to_string(), "none".to_string(), 1.0),
+            0x74 => return ("Remaining Battery Lifetime".to_string(), "days".to_string(), 1.0),
+            _ => return ("Extension Metric".to_string(), "raw".to_string(), 1.0),
+        }
+    }
+
+    match base_vif {
+        // Volume (0x10 .. 0x17)
+        0x10..=0x17 => {
+            let exp = (base_vif & 0x07) as i32 - 6;
+            let scale = 10f64.powi(exp);
+
+            let desc = if vif_stack.len() > 1 {
+                match vif_stack[1] & 0x7F {
+                    0x3B => "Forward Volume".to_string(),
+                    0x3C => "Backward Volume".to_string(),
+                    _ => "Volume".to_string(),
+                }
+            } else {
+                "Volume".to_string()
+            };
+
+            (desc, "m³".to_string(), scale)
+        }
+
+        // Energy (0x00 .. 0x07)
+        0x00..=0x07 => {
+            let exp = (base_vif & 0x07) as i32 - 3;
+            let scale = 10f64.powi(exp);
+            ("Energy".to_string(), "kWh".to_string(), scale)
+        }
+
+        // Operating Time (0x20..=0x23)
+        0x20..=0x23 => {
+            let scale = match base_vif & 0x03 {
+                0 => 1.0,
+                1 => 60.0,
+                2 => 3600.0,
+                3 => 86400.0,
+                _ => 1.0,
+            };
+            ("Operating Time".to_string(), "seconds".to_string(), scale)
+        }
+
+        // On Time Duration (0x24..=0x27)
+        0x24..=0x27 => {
+            let scale = match base_vif & 0x03 {
+                0 => 1.0,
+                1 => 60.0,
+                2 => 3600.0,
+                3 => 86400.0,
+                _ => 1.0,
+            };
+            ("On Time Duration".to_string(), "seconds".to_string(), scale)
+        }
+
+        // Volume Flow (0x38 .. 0x3F)
+        0x38..=0x3F => {
+            let exp = (base_vif & 0x07) as i32 - 6;
+            let scale = 10f64.powi(exp);
+            ("Current Flow".to_string(), "m³/h".to_string(), scale)
+        }
+
+        // Flow Temperature (0x58 .. 0x5B)
+        0x58..=0x5B => {
+            let exp = (base_vif & 0x03) as i32 - 3;
+            let scale = 10f64.powi(exp);
+            ("Flow Temperature".to_string(), "°C".to_string(), scale)
+        }
+
+        // Return Temperature (0x5C .. 0x5F)
+        0x5C..=0x5F => {
+            let exp = (base_vif & 0x03) as i32 - 3;
+            let scale = 10f64.powi(exp);
+            ("Return Temperature".to_string(), "°C".to_string(), scale)
+        }
+
+        // Date / DateTime (0x6C, 0x6D)
+        0x6C | 0x6D => ("Date and Time".to_string(), "".to_string(), 1.0),
+
+        _ => ("Unknown Metric".to_string(), "raw".to_string(), 1.0),
+    }
+}
+
 fn evaluate_record(
     primary_dif: u8,
     primary_vif: u8,
     vif_stack: &[u8],
-    data: &[u8],
+    data_segment: &[u8],
 ) -> (String, String, String) {
+    let base_vif = primary_vif & 0x7F;
+
+    // Check for Date and Time records before numeric processing
+    if base_vif == 0x6D && data_segment.len() >= 4 {
+        if let Some(dt) = parse_mbus_datetime_f(data_segment) {
+            return ("Date and Time".to_string(), "".to_string(), dt);
+        }
+    } else if base_vif == 0x6C && data_segment.len() >= 2 {
+        if let Some(date_str) = parse_mbus_date(data_segment) {
+            return ("Target Date".to_string(), "".to_string(), date_str);
+        }
+    }
+
     let data_type = primary_dif & 0x0F;
-    let vif_clean = primary_vif & 0x7F;
 
-    // 1. Special Data (DIF 0x0D)
-    if data_type == 0x0D {
-        return ("Special Data".into(), "hex".into(), hex::encode(data).to_uppercase());
-    }
-
-    // 2. Date and Time Type F (VIF 0x6D)
-    if vif_clean == 0x6D {
-        if let Some(formatted_dt) = parse_mbus_datetime_f(data) {
-            return ("Date and Time".into(), "".into(), formatted_dt);
-        }
-    }
-
-    // 3. Extension Tables (0xFD / 0x7D)
-    if primary_vif == 0xFD || primary_vif == 0x7D {
-        let vife = vif_stack.get(1).copied().unwrap_or(0) & 0x7F;
-        let raw_val = parse_unsigned(data);
-
-        match vife {
-            // 0x17 in FD table is Error Flags / Status
-            0x17 => {
-                return (
-                    "Error Flags".into(),
-                    "none".into(),
-                    raw_val.to_string(),
-                );
-            }
-            0x20 | 0x21 => {
-                return (
-                    "Remaining Battery Lifetime".into(),
-                    "days".into(),
-                    raw_val.to_string(),
-                );
-            }
-            // 0x24, 0x34, 0x74 are Battery Lifetime in Months
-            0x24 | 0x34 | 0x74 => {
-                return (
-                    "Remaining Battery Lifetime".into(),
-                    "months".into(),
-                    raw_val.to_string(),
-                );
-            }
-            0x25 => {
-                return (
-                    "Remaining Battery Lifetime".into(),
-                    "years".into(),
-                    raw_val.to_string(),
-                );
-            }
-            _ => {
-                return (
-                    "Extended Metric".into(),
-                    "raw".into(),
-                    raw_val.to_string(),
-                );
+    // 1. Decode numeric raw value according to DIF data type
+    let raw_val: f64 = match data_type {
+        // Binary Integer types
+        0x01 => data_segment.first().map(|&b| b as i8 as f64).unwrap_or(0.0),
+        0x02 => {
+            if data_segment.len() >= 2 {
+                i16::from_le_bytes([data_segment[0], data_segment[1]]) as f64
+            } else {
+                0.0
             }
         }
-    }
+        0x03 => {
+            if data_segment.len() >= 3 {
+                i32::from_le_bytes([data_segment[0], data_segment[1], data_segment[2], 0]) as f64
+            } else {
+                0.0
+            }
+        }
+        0x04 => {
+            if data_segment.len() >= 4 {
+                i32::from_le_bytes([
+                    data_segment[0],
+                    data_segment[1],
+                    data_segment[2],
+                    data_segment[3],
+                ]) as f64
+            } else {
+                0.0
+            }
+        }
 
-    // 4. Operating / On-Time Duration (VIF 0x20 - 0x27)
-    if (0x20..=0x27).contains(&vif_clean) {
-        let raw_val = parse_unsigned(data);
-        let (name, unit) = match vif_clean {
-            0x20 => ("Operating Time", "seconds"),
-            0x21 => ("Operating Time", "minutes"),
-            0x22 => ("Operating Time", "hours"),
-            0x23 => ("Operating Time", "days"),
-            0x24 => ("On Time Duration", "seconds"),
-            0x25 => ("On Time Duration", "minutes"),
-            0x26 => ("On Time Duration", "hours"),
-            0x27 => ("On Time Duration", "days"),
-            _ => ("Operating Time", "units"),
-        };
-        return (name.into(), unit.into(), raw_val.to_string());
-    }
+        // BCD Data Types (0x09=2B, 0x0A=4B, 0x0B=6B, 0x0C=8B, 0x0E=12B BCD)
+        0x09 | 0x0A | 0x0B | 0x0C | 0x0E => parse_bcd_bytes(data_segment),
 
-    // 5. Signed Temperature Evaluation (VIF 0x58..=0x67)
-    if (0x58..=0x67).contains(&vif_clean) {
-        let exp = (vif_clean & 0x03) as i32 - 3;
-        let scale = 10f64.powi(exp);
+        // 32-bit Float
+        0x05 => {
+            if data_segment.len() >= 4 {
+                f32::from_le_bytes([
+                    data_segment[0],
+                    data_segment[1],
+                    data_segment[2],
+                    data_segment[3],
+                ]) as f64
+            } else {
+                0.0
+            }
+        }
+        _ => 0.0,
+    };
 
-        let signed_val = if data_type == 0x02 && data.len() == 2 {
-            let bytes: [u8; 2] = data.try_into().unwrap_or([0; 2]);
-            i16::from_le_bytes(bytes) as f64
-        } else {
-            parse_signed(data) as f64
-        };
+    // 2. Map VIF / VIFE unit and scale factor
+    let (description, unit, scale) = parse_vif(primary_vif, vif_stack);
 
-        let val = (signed_val * scale * 100.0).round() / 100.0;
-        let name = match vif_clean {
-            0x58..=0x5B => "Flow Temperature",
-            0x5C..=0x5F => "Return Temperature",
-            0x60..=0x63 => "Temperature Difference",
-            _ => "External Temperature",
-        };
-        return (name.into(), "°C".into(), format!("{:.2}", val));
-    }
+    let final_val = raw_val * scale;
+    let formatted_val = format!("{:.6}", final_val)
+        .trim_end_matches('0')
+        .trim_end_matches('.')
+        .to_string();
 
-    // 6. Flow Evaluation (0x30..=0x3F)
-    if (0x30..=0x3F).contains(&vif_clean) {
-        let raw_val = parse_unsigned(data);
-        let exp = (vif_clean & 0x07) as i32 - 6;
-        let scale = 10f64.powi(exp);
-        let val = (raw_val as f64) * scale;
-        return ("Current Flow".into(), "m³/h".into(), format!("{:.3}", val));
-    }
+    let formatted_val = if formatted_val.is_empty() || formatted_val == "-" {
+        "0".to_string()
+    } else {
+        formatted_val
+    };
 
-    // 7. Volume Evaluation (0x10..=0x17)
-    if (0x10..=0x17).contains(&vif_clean) {
-        let is_bcd = matches!(data_type, 0x09 | 0x0A | 0x0B | 0x0C | 0x0E);
-        let raw_val = if is_bcd {
-            parse_bcd(data).unwrap_or_else(|| parse_unsigned(data))
-        } else {
-            parse_unsigned(data)
-        };
-
-        let exp = (vif_clean & 0x07) as i32 - 6;
-        let scale = 10f64.powi(exp);
-        let val = (raw_val as f64) * scale;
-        return ("Volume".into(), "m³".into(), format!("{:.2}", val));
-    }
-
-    let fallback_val = parse_unsigned(data);
-    ("Unknown Metric".into(), "raw".into(), format!("{:.2}", fallback_val as f64))
+    (description, unit, formatted_val)
 }
 
 // ============================================================================
@@ -318,7 +393,7 @@ pub fn parse_wmbus_records(raw_bytes: &[u8]) -> Vec<ParsedMeasurements> {
 
     let mut idx = 0;
 
-    // Fast-forward initial header or filler bytes
+    // Fast-forward initial transport header (0x7A/0x78 = 5 bytes, 0x72/0x73/0x7E = 13 bytes) or filler bytes (0x2F)
     if raw_bytes.len() >= 2 && raw_bytes[0] == 0x2F && raw_bytes[1] == 0x2F {
         while idx < raw_bytes.len() && raw_bytes[idx] == 0x2F {
             idx += 1;
@@ -355,23 +430,33 @@ pub fn parse_wmbus_records(raw_bytes: &[u8]) -> Vec<ParsedMeasurements> {
         // 1. Traverse DIF & DIFE stack
         let mut dif_stack = Vec::new();
         loop {
-            if idx >= raw_bytes.len() { break; }
+            if idx >= raw_bytes.len() {
+                break;
+            }
             let byte = raw_bytes[idx];
             idx += 1;
             dif_stack.push(byte);
-            if (byte & 0x80) == 0 { break; }
+            if (byte & 0x80) == 0 {
+                break;
+            }
         }
 
-        if idx >= raw_bytes.len() { break; }
+        if idx >= raw_bytes.len() {
+            break;
+        }
 
         // 2. Traverse VIF & VIFE stack
         let mut vif_stack = Vec::new();
         loop {
-            if idx >= raw_bytes.len() { break; }
+            if idx >= raw_bytes.len() {
+                break;
+            }
             let byte = raw_bytes[idx];
             idx += 1;
             vif_stack.push(byte);
-            if (byte & 0x80) == 0 { break; }
+            if (byte & 0x80) == 0 {
+                break;
+            }
         }
 
         let header_end_idx = idx;
@@ -396,7 +481,9 @@ pub fn parse_wmbus_records(raw_bytes: &[u8]) -> Vec<ParsedMeasurements> {
                     let len = raw_bytes[idx] as usize;
                     idx += 1;
                     len
-                } else { 0 }
+                } else {
+                    0
+                }
             }
             _ => 0,
         };
@@ -408,6 +495,8 @@ pub fn parse_wmbus_records(raw_bytes: &[u8]) -> Vec<ParsedMeasurements> {
         let data_segment = &raw_bytes[idx..idx + data_len];
         idx += data_len;
 
+        let (storage_no, tariff, device) = parse_dif_dife_metadata(&dif_stack);
+
         let (name, unit, value) = evaluate_record(
             primary_dif,
             primary_vif,
@@ -417,9 +506,9 @@ pub fn parse_wmbus_records(raw_bytes: &[u8]) -> Vec<ParsedMeasurements> {
 
         processed_records.push(ParsedMeasurements {
             header_raw: header_raw_hex,
-            storage_no: 0,
-            tariff: 0,
-            device: 0,
+            storage_no,
+            tariff,
+            device,
             dib: format!("{:02X}", primary_dif),
             vib: format!("{:02X}", primary_vif),
             value,
@@ -437,7 +526,7 @@ pub struct ProcessResult {
     pub manufacturer: String,
     pub device_type: u8,
     pub dll: DllHeaderInfo,
-    pub parsedMeasurements: Vec<ParsedMeasurements>,
+    pub parsed_measurements: Vec<ParsedMeasurements>,
     pub payload_fields: serde_json::Value,
 }
 

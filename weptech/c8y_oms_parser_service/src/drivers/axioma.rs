@@ -44,7 +44,7 @@ impl MeterDriver for AxiomaDriver {
         let decrypted_payload =
             SecurityEngine::decrypt_and_sanitize(mode, raw_payload, 10, key)?;
 
-        let parsedMeasurements = parse_wmbus_records(&decrypted_payload);
+        let parsed_measurements = parse_wmbus_records(&decrypted_payload);
 
         let dll_info = DllHeaderInfo {
             manufacturer_code: header.manufacturer_code(),
@@ -57,7 +57,7 @@ impl MeterDriver for AxiomaDriver {
             manufacturer: header.manufacturer_code(),
             device_type: header.device_type,
             dll: dll_info,
-            parsedMeasurements,
+            parsed_measurements,
             payload_fields: json!({
                 "decrypted_length": decrypted_payload.len(),
             }),

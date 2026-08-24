@@ -22,7 +22,8 @@ impl Default for DiehlDriver {
 
 impl MeterDriver for DiehlDriver {
     fn supports(&self, header: &DllHeader) -> bool {
-        header.manufacturer_code() == "DME"
+        // Match both Diehl Metering (DME) and legacy Hydrometer (HYD) manufacturer codes
+        matches!(header.manufacturer_code().as_str(), "DME" | "HYD")
     }
 
     fn parse(
@@ -33,13 +34,52 @@ impl MeterDriver for DiehlDriver {
     ) -> Result<ProcessResult, ParseError> {
         let header = DllHeader::from_bytes(raw_payload)?;
 
-        // Fallback to Mode 7 if no mode is explicitly passed
-        let mode = EncryptionMode::from(oms_mode.or(Some(7)));
+        // Standard DLL Header length is 10 bytes
+        const HEADER_OFFSET: usize = 10;
 
-        let decrypted_payload =
-            SecurityEngine::decrypt_and_sanitize(mode, raw_payload, 10, key)?;
+        if raw_payload.len() < HEADER_OFFSET {
+            return Err(ParseError::HeaderTooShort);
+        }
 
-        let parsedMeasurements = parse_wmbus_records(&decrypted_payload);
+        // Determine effective mode and decrypt if key is supplied or mode demands it
+        let effective_mode = oms_mode.unwrap_or_else(|| if key.is_some() { 7 } else { 0 });
+
+        let decrypted_payload = if effective_mode == 0 && key.is_none() {
+            // Unencrypted payload: slice directly past the DLL header
+            raw_payload[HEADER_OFFSET..].to_vec()
+        } else {
+            let mode = EncryptionMode::from(Some(effective_mode));
+            SecurityEngine::decrypt_and_sanitize(mode, raw_payload, HEADER_OFFSET, key)?
+        };
+
+        // Debug log decrypted byte stream
+        tracing::info!("Decrypted Payload Hex: {}", hex::encode(&decrypted_payload).to_uppercase());
+
+        // Parse wM-Bus data records from payload
+        let mut parsed_measurements = parse_wmbus_records(&decrypted_payload);
+
+        // Diehl-specific record post-processing
+        for rec in &mut parsed_measurements {
+            // 1. Target Billing Volume (0x4C13 / 0x4C933C with sentinel 0xAAAAAAAA)
+            if rec.header_raw.starts_with("4C13") || rec.header_raw.starts_with("4C933C") {
+                if rec.value == "0" {
+                    rec.description = "Target Volume (Unset)".to_string();
+                    rec.value = "Unset".to_string();
+                    rec.unit = "".to_string();
+                } else {
+                    rec.description = "Target Volume".to_string();
+                }
+            }
+
+            // 2. Target Billing Date (0x426C)
+            if rec.header_raw.starts_with("426C") {
+                if rec.value == "Unset" || rec.value == "-1" {
+                    rec.description = "Target Billing Date (Unset)".to_string();
+                    rec.value = "Unset".to_string();
+                    rec.unit = "".to_string();
+                }
+            }
+        }
 
         let dll_info = DllHeaderInfo {
             manufacturer_code: header.manufacturer_code(),
@@ -52,9 +92,9 @@ impl MeterDriver for DiehlDriver {
             manufacturer: header.manufacturer_code(),
             device_type: header.device_type,
             dll: dll_info,
-            parsedMeasurements,
+            parsed_measurements,
             payload_fields: json!({
-                "mode": oms_mode.unwrap_or(7),
+                "mode": effective_mode,
             }),
         })
     }

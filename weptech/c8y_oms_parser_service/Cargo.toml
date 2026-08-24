@@ -12,6 +12,7 @@ hex = "0.4"
 base64 = "0.22"
 async-trait = "0.1"
 thiserror = "1.0"
+#ctr = "0.9"
 
 # Cryptography for OMS Modes 5 & 7
 aes = "0.8"

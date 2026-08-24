@@ -27,7 +27,7 @@ impl MeterDriver for GenericOmsFallbackDriver {
                 device_type_raw: header.device_type,
                 version: header.version,
             },
-            parsedMeasurements: vec![],
+            parsed_measurements: vec![],
             payload_fields: json!({
                 "raw_parsed": true
             }),
