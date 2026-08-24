@@ -91,10 +91,12 @@ public class OmsLwm2mDecoderService implements DecoderService {
 |---|---|---|---|
 | `046D` | Meter Date & Time | Applied as `DateTime` for all measurements | ISO8601 |
 | `0413` | Standard Volume | `Meter_Volume.V` | m³ |
-| `023B` | Volume Flow Rate / Power | `Meter_Volume_Flow.Flow` | m³/h |
-| `0259` | Flow Temperature | `Meter_Flow_Temperature.T` | °C |
-| `01FD74` | Remaining Battery Life | `Meter_Remaining_Battery.Remaining_Battery` | day(s) |
-
+| `0420` | Meter Operating Time | `Meter_Operating_Time.Operating_Time` | `seconds` |
+| `023B` | Volume Flow Rate | `Meter_Volume_Flow.Flow` | `m³/h` |
+| `0259` | Flow Temperature | `Meter_Flow_Temperature.T` | `°C` |
+| `0A5A` | Flow Temperature | `Meter_Flow_Temperature.T` | `°C` |
+| `01FD74` | Remaining Battery Life | `Meter_Remaining_Battery.Remaining_Battery` | `days` |
+| `02FD74` | Remaining Battery Life | `Meter_Remaining_Battery.Remaining_Battery` | `days` |
 ---
 
 ## Supported Water Meters
