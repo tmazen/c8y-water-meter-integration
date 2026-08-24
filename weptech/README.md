@@ -71,4 +71,4 @@ A Cumulocity microservice implementing the **`com.cumulocity.microservice.custom
 3. **Build & Deploy Java Custom Decoder:**
    Build `oms-decoder-microservice-java` into a microservice ZIP and deploy it to Cumulocity.
 4. **Register Device Protocol:**
-   In Cumulocity, create a **LwM2M Device Protocol** for SAWAN3, link the target LwM2M resource, and select `Cumulocity OMS Parser` as the **Custom Decoder Microservice**.
+   In Cumulocity (Device Management $\rightarrow$ Device Protocols), create a LwM2M Device Protocol for SAWAN3, map target resource 34650 WEPTECH Meter Data $\rightarrow$ Telegram Data (0) to the Cumulocity OMS Parser Custom Decoder Microservice, and enable Auto Observe with a Min Period of 1 second to ensure all sequential telegrams are read without drops.
