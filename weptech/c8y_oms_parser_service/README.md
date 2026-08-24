@@ -5,7 +5,7 @@ A high-performance, containerized Rust microservice built on **Axum** and **Toki
 ---
 ## Features
 * **Multi-Mode Decryption Support**: Engineered to parse unencrypted payloads as well as encrypted wM-Bus/OMS data streams utilizing Mode 5 (AES-CBC) and Mode 7 (AES-CTR/GCM) with dynamic IV resolution.
-* **Driver Registry Architecture**: Extensible, trait-based driver dispatch system (`MeterDriver`) supporting manufacturer-specific profiles (Diehl, Axioma) alongside standard OMS fallbacks.
+* **Driver Registry Architecture**: Extensible, trait-based driver dispatch system (`MeterDriver`) supporting manufacturer-specific profiles (ex: Diehl, Axioma) alongside standard OMS fallbacks.
 * **DIF/VIF Record Parsing**: Decodes standard and extended M-Bus data structures including Volume, Energy, Flow Rates, Temperatures, Time, Diagnostic Alarm Vectors, and Battery Status.
 * **Exact Field & Record Tracking**: Exposes `header_raw`, `dib`, `vib`, `storage_no`, `tariff`, and `device` indices for every measurement, enabling upstream applications to differentiate identical physical quantities (e.g., Forward vs. Return Flow).
 * **Enterprise Auditability & Key Masking**: Integrated `tracing` structured logging that automatically redacts sensitive AES keys and cleans payload attributes for secure, non-ANSI Cloud Logging Compliance.
