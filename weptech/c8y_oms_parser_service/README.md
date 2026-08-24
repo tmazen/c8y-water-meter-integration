@@ -78,45 +78,6 @@ When mapping outputs in downstream Cumulocity microservices, any other external 
 | `01FD74` | Remaining Battery Life | `days` | `97` |
 | `02FD74` | Remaining Battery Life | `days` | `97` |
 ---
-
-## Supported DIF / DIFE / VIF / VIFE Reference
-The core Rust parser (`dif_vif` module) decodes raw M-Bus frames using dynamic lookup tables. The primary standard VIF mappings and extended vendor overrides are detailed below:
-    
-### Standard VIF Lookup Table
-| # | Metric Name | Unit | VIF Hex Range | Rust Decoder Type |
-| :-: | :--- | :-: | :--- | :--- |
-| **1** | Energy | `Wh` | `0x00 - 0x07` | Unsigned Integer / Scalar |
-| **2** | Energy | `J` | `0x08 - 0x0F` | Unsigned Integer / Scalar |
-| **3** | Energy | `Cal` | `0x60 - 0x67` | Unsigned Integer / Scalar |
-| **4** | Volume | `m³` | `0x10 - 0x17` | Unsigned Integer / Scalar |
-| **5** | Mass | `kg` | `0x18 - 0x1F` | Unsigned Integer / Scalar |
-| **6** | On Time | `seconds` | `0x20 - 0x23` | Unsigned Integer |
-| **7** | Operating Time | `seconds` | `0x24 - 0x27` | Unsigned Integer |
-| **8** | Power | `W` | `0x28 - 0x2F` | Unsigned Integer / Scalar |
-| **9** | Power | `J/h` | `0x30 - 0x37` | Unsigned Integer / Scalar |
-| **10** | Volume Flow | `m³/h` | `0x38 - 0x3F` | Unsigned Integer / Scalar |
-| **11** | Flow Temperature | `°C` | `0x58 - 0x5B` | Signed Integer / Scalar |
-| **12** | Return Temperature | `°C` | `0x5C - 0x5F` | Signed Integer / Scalar |
-| **13** | Temperature Difference | `K` | `0x60 - 0x63` | Signed Integer / Scalar |
-| **14** | External Temperature | `°C` | `0x64 - 0x67` | Signed Integer / Scalar |
-| **15** | Pressure | `bar` | `0x68 - 0x6B` | Signed Integer / Scalar |
-| **16** | Date and Time | `ISO8601` | `0x6D` | MbusDateTime |
-
-
-### Special VIF / Ext-VIF Overrides (`parse_vif`)
-When extension bytes (`0xFD` / `0xFB`) or specific VIFE combination bytes are encountered, `parse_vif` redirects the parsing logic to specialized handlers:
-| Trigger Bytes | Extracted Metric Name | Unit | Description / Note |
-| :--- | :--- | :-: | :--- |
-| `0xFD` + `0x74` | Remaining Battery Life | `days` | Converted from raw days counter |
-| `0xFD` + `0x17` | Diagnostic Error Flags | `bitfield` | Device hardware error/alarm status |
-| `0x13` + `0x3B` | Forward Volume Accumulation | `m³` | Sub-type direction tracking |
-| `0x13` + `0x3C` | Backward Volume Accumulation | `m³` | Sub-type direction tracking |
-    
-> **Note**: Unrecognized VIF/DIF combinations are safely captured into raw fallback records with their `dib` and `vib` hex strings intact. This ensures payload parsing never fails the entire request batch due to unknown fields.
----
-
-
-
 ## REST API Specification
 
 ### Endpoint: `POST /api/v1/parse`
