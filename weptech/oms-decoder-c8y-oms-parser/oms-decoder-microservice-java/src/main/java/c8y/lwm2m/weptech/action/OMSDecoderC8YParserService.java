@@ -302,7 +302,108 @@ public class OMSDecoderC8YParserService implements DecoderService{
         return meterMO;
     }
 
-    public void parsewMbusPayload(ManagedObjectRepresentation meterMo, String jsonString) throws DecoderServiceException {
+
+    public void parsewMbusPayload(ManagedObjectRepresentation meterMO, String jsonString) throws DecoderServiceException {
+        DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(jsonString);
+            JsonNode drArray = root.at("/data/parsed_measurements");
+
+            if (drArray.isArray()) {
+                // Resolve Effective Timestamp (Fallback to reception time if payload omits 046D)
+                DateTime effectiveTimestamp = DateTime.now();
+                for (JsonNode node : drArray) {
+                    String description = node.has("description") ? node.get("description").asText() : "";
+                    String header = node.has("header_raw") ? node.get("header_raw").asText() : "";
+                    String value = node.has("value") ? node.get("value").asText() : "";
+
+                   // if ("Date and Time".equalsIgnoreCase(description) || "046D".equals(header)) {
+                    if ("046D".equals(header)) {
+                        if (!value.isEmpty() && !"Unset".equalsIgnoreCase(value)) {
+                            try {
+                                effectiveTimestamp = formatter.parseDateTime(value);
+                                log.info("Extracted payload timestamp: {}", effectiveTimestamp);
+                            } catch (Exception e) {
+                                log.warn("Failed to parse date '{}', defaulting to now", value);
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                //Process records dynamically
+                List<MeasurementRepresentation> measurementsToSend = new ArrayList<>();
+                for (JsonNode node : drArray) {
+                    String description = node.has("description") ? node.get("description").asText() : "";
+                    String header = node.has("header_raw") ? node.get("header_raw").asText() : "";
+                    String value = node.has("value") ? node.get("value").asText() : "";
+                    String unit = node.has("unit") ? node.get("unit").asText() : "";
+
+                    // Skip non-numeric or uninitialized records
+                    if (value.isEmpty() || "Unset".equalsIgnoreCase(value)) {
+                        continue;
+                    }
+
+                    BigDecimal numericValue;
+                    try {
+                        numericValue = new BigDecimal(value);
+                    } catch (NumberFormatException e) {
+                        log.warn("Skipping non-numeric value for header {}: {}", header, value);
+                        continue;
+                    }
+
+                    // Match by description (primary) or header code (fallback)
+                    //if ("Volume".equalsIgnoreCase(description) || "0413".equals(header) || "0C13".equals(header)) {
+                    if ("0413".equals(header) || "0C13".equals(header)) { // Volume
+                        measurementsToSend.add(createMeasurement(
+                                meterMO, "C8y_Meter_Volume", "Meter_Volume", "V", numericValue, unit, effectiveTimestamp
+                        ));
+                    }
+                    //else if ("Operating Time".equalsIgnoreCase(description) || "0420".equals(header)) {
+                    else if ("0420".equals(header)) { //Operating Time
+                        measurementsToSend.add(createMeasurement(
+                                meterMO, "C8y_Meter_Operating_Time", "Meter_Operating_Time", "Operating_Time", numericValue, unit, effectiveTimestamp
+                        ));
+                    }
+                    //else if ("Current Flow".equalsIgnoreCase(description) || "Volume Flow".equalsIgnoreCase(description) || "023B".equals(header)) {
+                    else if ("023B".equals(header)) { // Current Flow or Volume Flow
+                        measurementsToSend.add(createMeasurement(
+                                meterMO, "C8y_Meter_Volume_Flow", "Meter_Volume_Flow", "Flow", numericValue, unit, effectiveTimestamp
+                        ));
+                    }
+                    //else if ("Flow Temperature".equalsIgnoreCase(description) || "0259".equals(header) || "0A5A".equals(header)) {
+                    else if ("0259".equals(header) || "0A5A".equals(header)) { // Flow Temperature
+                        measurementsToSend.add(createMeasurement(
+                                meterMO, "C8y_Meter_Flow_Temperature", "Meter_Flow_Temperature", "T", numericValue, unit, effectiveTimestamp
+                        ));
+                    }
+                    //else if ("Remaining Battery Lifetime".equalsIgnoreCase(description) || "01FD74".equals(header) || "02FD74".equals(header)) {
+                    else if ( "01FD74".equals(header) || "02FD74".equals(header)) { //Remaining Battery Lifetime
+                        measurementsToSend.add(createMeasurement(
+                                meterMO, "C8y_Meter_Remaining_Battery", "Meter_Remaining_Battery", "Remaining_Battery", numericValue, unit, effectiveTimestamp
+                        ));
+                    }
+                } // end of for
+
+                MeasurementCollectionRepresentation collection = new MeasurementCollectionRepresentation();
+                collection.setMeasurements(measurementsToSend);
+                measurementApi.createBulk(collection);
+                log.info("Measurements are created successfully .....");
+
+            } else {
+                log.info("drArray is not an array");
+            }
+
+        } catch (Exception e) {
+            log.error("Cannot Parse wMbus Payload.");
+            throw new DecoderServiceException(e, e.getMessage(), new DecoderResult());
+
+        }
+    }
+
+    /*public void parsewMbusPayload(ManagedObjectRepresentation meterMo, String jsonString) throws DecoderServiceException {
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(jsonString);
@@ -447,7 +548,7 @@ public class OMSDecoderC8YParserService implements DecoderService{
             throw new DecoderServiceException(e, e.getMessage(), new DecoderResult());
 
         }
-    }
+    }*/
 
    /* public static String dyecryptMeterPauload(String meterEncruptionKey, String meterEncryptedPayload) throws DecoderServiceException {
 
@@ -498,5 +599,31 @@ public class OMSDecoderC8YParserService implements DecoderService{
                     + Character.digit(s.charAt(i+1), 16));
         }
         return data;
+    }
+
+    // Helper method to construct Cumulocity Measurement Representations
+    private MeasurementRepresentation createMeasurement(
+            ManagedObjectRepresentation meterMO,
+            String type,
+            String seriesFragment,
+            String seriesName,
+            BigDecimal value,
+            String unit,
+            DateTime timestamp) {
+
+        MeasurementRepresentation measurement = new MeasurementRepresentation();
+        measurement.setSource(meterMO);
+        measurement.setType(type);
+        measurement.setDateTime(timestamp);
+
+        MeasurementValue measurementValue = new MeasurementValue();
+        measurementValue.setValue(value);
+        measurementValue.setUnit(unit);
+
+        Map<String, MeasurementValue> seriesMap = new HashMap<>();
+        seriesMap.put(seriesName, measurementValue);
+
+        measurement.set(seriesMap, seriesFragment);
+        return measurement;
     }
 }
