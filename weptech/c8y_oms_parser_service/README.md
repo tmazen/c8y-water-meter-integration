@@ -109,21 +109,29 @@ When mapping outputs in downstream Cumulocity microservices, any other external 
       "version": 99
     },
     "parsed_measurements": [
-      {
-        "header_raw": "0413",
+    {
+        "header_raw": "0C13",
         "storage_no": 0,
         "tariff": 0,
         "device": 0,
-        "dib": "04",
+        "dib": "0C",
         "vib": "13",
-        "value": "1245.892",
+        "value": "0.2",
         "unit": "m³",
         "description": "Volume"
+      },
+      {
+        "header_raw": "0A5A",
+        "storage_no": 0,
+        "tariff": 0,
+        "device": 0,
+        "dib": "0A",
+        "vib": "5A",
+        "value": "29",
+        "unit": "°C",
+        "description": "Flow Temperature"
       }
-    ],
-    "payload_fields": {
-      "mode": 7
-    }
+    ]
   },
   "error": null
 }
