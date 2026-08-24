@@ -108,7 +108,7 @@ When mapping outputs in downstream Cumulocity microservices, any other external 
       "device_type_raw": 7,
       "version": 99
     },
-    "parsedMeasurements": [
+    "parsed_measurements": [
       {
         "header_raw": "0413",
         "storage_no": 0,
