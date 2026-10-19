@@ -1,5 +1,5 @@
 // Handles transport-layer security (Mode 5 AES-CBC & Mode 7 AES-CBC
-// with KDF A) and post-decryption sanitization.
+// with KDF A) and post-decryption verification.
 //
 // src/security.rs
 
@@ -35,6 +35,29 @@ impl From<Option<u8>> for EncryptionMode {
 }
 
 // ================================================================
+// TRANSPORT LAYER HEADER
+// ================================================================
+
+struct TplHeader {
+    /// Header length including the CI field
+    len: usize,
+    access_no: u8,
+    cf: u16,
+    /// Manufacturer + address used for the Mode 5 IV (None if the frame has no TPL header)
+    iv_prefix: Option<[u8; 8]>,
+}
+
+impl TplHeader {
+    fn security_mode(&self) -> u8 {
+        ((self.cf >> 8) & 0x1F) as u8
+    }
+
+    fn encrypted_blocks(&self) -> usize {
+        ((self.cf >> 4) & 0x0F) as usize
+    }
+}
+
+// ================================================================
 // MODE 7 PARSED SECURITY INFORMATION (Moved to module scope)
 // ================================================================
 
@@ -47,22 +70,33 @@ struct Mode7SecurityInfo {
 pub struct SecurityEngine;
 
 impl SecurityEngine {
-    pub fn decrypt_and_sanitize(
+    /// Returns the application data (data records) following the transport
+    /// layer header, decrypted according to `mode`.
+    pub fn decrypt_payload(
         mode: EncryptionMode,
         raw_payload: &[u8],
         header_len: usize,
         key: Option<&[u8]>,
     ) -> Result<Vec<u8>, ParseError> {
-        if raw_payload.len() < header_len {
+        if raw_payload.len() <= header_len {
             return Err(ParseError::HeaderError(
                 "Payload shorter than specified header length".into(),
             ));
         }
 
-        let payload_to_decrypt = &raw_payload[header_len..];
+        match mode {
+            EncryptionMode::None => {
+                let tpl = Self::parse_tpl(raw_payload, header_len)?;
 
-        let decrypted = match mode {
-            EncryptionMode::None => payload_to_decrypt.to_vec(),
+                if tpl.security_mode() != 0 {
+                    return Err(ParseError::DecryptionError(format!(
+                        "Telegram is encrypted (security mode {}), but no key or OMS mode was given",
+                        tpl.security_mode()
+                    )));
+                }
+
+                Ok(raw_payload[header_len + tpl.len..].to_vec())
+            }
 
             // ---------------------------------------------------------
             // MODE 5
@@ -76,27 +110,46 @@ impl SecurityEngine {
 
                 Self::validate_key(key_bytes)?;
 
-                if payload_to_decrypt.is_empty() {
-                    return Err(ParseError::DecryptionError(
-                        "Payload to decrypt is empty".into(),
-                    ));
-                }
+                let tpl = Self::parse_tpl(raw_payload, header_len)?;
 
-                if payload_to_decrypt.len() % 16 != 0 {
+                if tpl.security_mode() != 5 {
                     return Err(ParseError::DecryptionError(format!(
-                        "Mode 5 payload length ({}) is not a multiple of 16 bytes",
-                        payload_to_decrypt.len()
+                        "Expected Security Mode 5, found Mode {}",
+                        tpl.security_mode()
                     )));
                 }
 
-                let mut iv = [0u8; 16];
+                let iv_prefix = tpl.iv_prefix.ok_or_else(|| {
+                    ParseError::DecryptionError(
+                        "Mode 5 requires a short or long TPL header".into(),
+                    )
+                })?;
 
-                if raw_payload.len() >= 10 {
-                    iv[0..8].copy_from_slice(&raw_payload[2..10]);
-                    iv[8..16].copy_from_slice(&raw_payload[2..10]);
+                // IV = M-field + A-field followed by 8x Access Number
+                let mut iv = [tpl.access_no; 16];
+                iv[0..8].copy_from_slice(&iv_prefix);
+
+                let encrypted_len = tpl.encrypted_blocks() * 16;
+
+                if encrypted_len == 0 {
+                    return Err(ParseError::DecryptionError(
+                        "Mode 5 configuration specifies zero encrypted blocks".into(),
+                    ));
                 }
 
-                let mut buf = payload_to_decrypt.to_vec();
+                let ciphertext_start = header_len + tpl.len;
+                let ciphertext_end = ciphertext_start + encrypted_len;
+
+                if raw_payload.len() < ciphertext_end {
+                    return Err(ParseError::DecryptionError(format!(
+                        "Telegram contains only {} bytes after TPL, \
+                         but Mode 5 requires {} encrypted bytes",
+                        raw_payload.len() - ciphertext_start,
+                        encrypted_len
+                    )));
+                }
+
+                let mut buf = raw_payload[ciphertext_start..ciphertext_end].to_vec();
 
                 let cipher = Aes128CbcDec::new_from_slices(
                     key_bytes,
@@ -118,7 +171,9 @@ impl SecurityEngine {
                         ))
                     })?;
 
-                buf
+                Self::verify_plaintext(&buf)?;
+
+                Ok(buf)
             }
 
             // ---------------------------------------------------------
@@ -133,7 +188,7 @@ impl SecurityEngine {
 
                 Self::validate_key(persistent_key)?;
 
-                let security = Self::parse_mode7(raw_payload)?;
+                let security = Self::parse_mode7(raw_payload, header_len)?;
 
                 let kenc = Self::derive_mode7_kenc(
                     persistent_key,
@@ -165,11 +220,78 @@ impl SecurityEngine {
                         ))
                     })?;
 
-                buf
+                Self::verify_plaintext(&buf)?;
+
+                Ok(buf)
+            }
+        }
+    }
+
+    // ================================================================
+    // TPL PARSER
+    // ================================================================
+
+    fn parse_tpl(raw_payload: &[u8], ci_pos: usize) -> Result<TplHeader, ParseError> {
+        let ci = raw_payload[ci_pos];
+
+        let len = match ci {
+            // No TPL header
+            0x78 => 1,
+            // Short TPL header: CI ACC STS CF CF
+            0x7A => 5,
+            // Long TPL header: CI ID(4) M(2) VER TYPE ACC STS CF CF
+            0x72 | 0x73 | 0x7E => 13,
+            _ => {
+                return Err(ParseError::InvalidFrame(format!(
+                    "Unsupported CI field 0x{:02X}",
+                    ci
+                )))
             }
         };
 
-        Ok(Self::sanitize(&decrypted))
+        if raw_payload.len() < ci_pos + len {
+            return Err(ParseError::InvalidFrame(format!(
+                "Incomplete TPL header for CI 0x{:02X}",
+                ci
+            )));
+        }
+
+        let h = &raw_payload[ci_pos..ci_pos + len];
+
+        let tpl = match len {
+            1 => TplHeader {
+                len,
+                access_no: 0,
+                cf: 0,
+                iv_prefix: None,
+            },
+            5 => {
+                // Short header: manufacturer and address come from the DLL
+                let mut iv_prefix = [0u8; 8];
+                iv_prefix.copy_from_slice(&raw_payload[2..10]);
+                TplHeader {
+                    len,
+                    access_no: h[1],
+                    cf: u16::from_le_bytes([h[3], h[4]]),
+                    iv_prefix: Some(iv_prefix),
+                }
+            }
+            _ => {
+                // Long header: manufacturer and address come from the TPL
+                let mut iv_prefix = [0u8; 8];
+                iv_prefix[0..2].copy_from_slice(&h[5..7]);
+                iv_prefix[2..6].copy_from_slice(&h[1..5]);
+                iv_prefix[6..8].copy_from_slice(&h[7..9]);
+                TplHeader {
+                    len,
+                    access_no: h[9],
+                    cf: u16::from_le_bytes([h[11], h[12]]),
+                    iv_prefix: Some(iv_prefix),
+                }
+            }
+        };
+
+        Ok(tpl)
     }
 
     // ================================================================
@@ -178,6 +300,7 @@ impl SecurityEngine {
 
     fn parse_mode7(
         raw_payload: &[u8],
+        ell_pos: usize,
     ) -> Result<Mode7SecurityInfo, ParseError> {
         if raw_payload.len() < 35 {
             return Err(ParseError::DecryptionError(
@@ -192,24 +315,16 @@ impl SecurityEngine {
             raw_payload[7],
         ];
 
-        let ell_pos = raw_payload
-            .iter()
-            .position(|&b| b == 0x8C)
-            .ok_or_else(|| {
-                ParseError::DecryptionError(
-                    "Mode 7 ELL header (0x8C) not found".into(),
-                )
-            })?;
-
-        if raw_payload.len() < ell_pos + 3 {
-            return Err(ParseError::DecryptionError(
-                "Incomplete ELL header".into(),
-            ));
+        if raw_payload[ell_pos] != 0x8C {
+            return Err(ParseError::DecryptionError(format!(
+                "Expected Mode 7 ELL CI 0x8C, found 0x{:02X}",
+                raw_payload[ell_pos]
+            )));
         }
 
         let afl_pos = ell_pos + 3;
 
-        if raw_payload.len() < afl_pos + 14 {
+        if raw_payload.len() < afl_pos + 4 {
             return Err(ParseError::DecryptionError(
                 "Incomplete AFL header".into(),
             ));
@@ -222,43 +337,47 @@ impl SecurityEngine {
             )));
         }
 
-        let message_counter = [
-            raw_payload[afl_pos + 5],
-            raw_payload[afl_pos + 6],
-            raw_payload[afl_pos + 7],
-            raw_payload[afl_pos + 8],
-        ];
+        let afl_len = raw_payload[afl_pos + 1] as usize;
+        let fcl = u16::from_le_bytes([raw_payload[afl_pos + 2], raw_payload[afl_pos + 3]]);
+        let tpl_pos = afl_pos + 2 + afl_len;
 
-        let mut tpl_pos = None;
-
-        for i in 0..raw_payload.len().saturating_sub(5) {
-            if raw_payload[i] != 0x7A {
-                continue;
-            }
-
-            let cf = u16::from_le_bytes([
-                raw_payload[i + 3],
-                raw_payload[i + 4],
-            ]);
-
-            let mode = ((cf >> 8) & 0x1F) as u8;
-
-            if mode == 7 {
-                tpl_pos = Some(i);
-                break;
-            }
+        // AFL fields follow the FCL in order MCL, KI, MCR, MAC, ML
+        let mut mcr_pos = afl_pos + 4;
+        if fcl & (1 << 13) != 0 {
+            mcr_pos += 1;
+        }
+        if fcl & (1 << 9) != 0 {
+            return Err(ParseError::DecryptionError(format!(
+                "Mode 7 AFL with key information is not supported (FCL=0x{:04X})",
+                fcl
+            )));
         }
 
-        let tpl_pos = tpl_pos.ok_or_else(|| {
-            ParseError::DecryptionError(
-                "Mode 7 short TPL header (CI 0x7A) not found".into(),
-            )
-        })?;
+        if fcl & (1 << 11) == 0 {
+            return Err(ParseError::DecryptionError(format!(
+                "Mode 7 AFL has no message counter (FCL=0x{:04X})",
+                fcl
+            )));
+        }
 
-        if raw_payload.len() < tpl_pos + 6 {
+        if mcr_pos + 4 > tpl_pos || raw_payload.len() < tpl_pos + 6 {
             return Err(ParseError::DecryptionError(
-                "Incomplete Mode 7 TPL header".into(),
+                "Incomplete AFL header".into(),
             ));
+        }
+
+        let message_counter = [
+            raw_payload[mcr_pos],
+            raw_payload[mcr_pos + 1],
+            raw_payload[mcr_pos + 2],
+            raw_payload[mcr_pos + 3],
+        ];
+
+        if raw_payload[tpl_pos] != 0x7A {
+            return Err(ParseError::DecryptionError(format!(
+                "Expected Mode 7 short TPL CI 0x7A, found 0x{:02X}",
+                raw_payload[tpl_pos]
+            )));
         }
 
         let cf = u16::from_le_bytes([
@@ -309,13 +428,7 @@ impl SecurityEngine {
 
         let ciphertext_start = tpl_pos + 6;
 
-        let ciphertext_end = ciphertext_start
-            .checked_add(encrypted_len)
-            .ok_or_else(|| {
-                ParseError::DecryptionError(
-                    "Mode 7 encrypted length overflow".into(),
-                )
-            })?;
+        let ciphertext_end = ciphertext_start + encrypted_len;
 
         if raw_payload.len() < ciphertext_end {
             return Err(ParseError::DecryptionError(format!(
@@ -405,20 +518,17 @@ impl SecurityEngine {
     }
 
     // ================================================================
-    // SANITIZATION
+    // PLAINTEXT VERIFICATION
     // ================================================================
 
-    fn sanitize(decrypted: &[u8]) -> Vec<u8> {
-        let mut slice = decrypted;
-
-        while slice.starts_with(&[0x2F]) {
-            slice = &slice[1..];
+    /// Decrypted OMS data starts with 0x2F2F; anything else means a wrong key.
+    fn verify_plaintext(decrypted: &[u8]) -> Result<(), ParseError> {
+        if !decrypted.starts_with(&[0x2F, 0x2F]) {
+            return Err(ParseError::DecryptionError(
+                "Decrypted data does not start with 0x2F2F (wrong key?)".into(),
+            ));
         }
 
-        while slice.ends_with(&[0x2F]) {
-            slice = &slice[..slice.len() - 1];
-        }
-
-        slice.to_vec()
+        Ok(())
     }
 }
